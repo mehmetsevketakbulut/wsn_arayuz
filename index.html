@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page_title">WSN Otonom Karar & Filtreleme Paneli</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0a0a1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* --- HEADER --- */
+        .header {
+            background: linear-gradient(135deg, #1a1a3e, #0d0d2b);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #00d2ff33;
+        }
+        .header h1 {
+            font-size: 18px;
+            color: #00d2ff;
+            letter-spacing: 1px;
+        }
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .lang-btn {
+            background: transparent;
+            border: 2px solid #00d2ff;
+            color: #00d2ff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        .lang-btn:hover { background: #00d2ff22; }
+        .health-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+            background: #666;
+            transition: background 0.3s;
+        }
+        .health-dot.ok { background: #4CAF50; box-shadow: 0 0 8px #4CAF5088; }
+        .health-dot.fail { background: #f44336; box-shadow: 0 0 8px #f4433688; }
+        .health-dot.checking { background: #ff9800; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        .health-label {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* --- LAYOUT --- */
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        @media (max-width: 1000px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        /* --- PANELS --- */
+        .panel {
+            background: linear-gradient(180deg, #1a1a3e, #12122a);
+            padding: 24px;
+            border-radius: 14px;
+            border: 1px solid #ffffff0a;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .panel h2 {
+            color: #00d2ff;
+            margin-bottom: 4px;
+            font-size: 17px;
+            border-bottom: 1px solid #ffffff10;
+            padding-bottom: 10px;
+        }
+        .panel-desc {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        /* --- VERI KUTUSU --- */
+        .veri-kutusu {
+            background: #0d0d25;
+            margin: 10px 0;
+            padding: 14px;
+            border-radius: 10px;
+            border-left: 4px solid #00d2ff;
+        }
+        .veri-kutusu .label { font-size: 12px; color: #888; margin-bottom: 4px; }
+        .veri-kutusu .deger {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            word-wrap: break-word;
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            border: none;
+            padding: 12px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #00d2ff; color: #0a0a1a; }
+        .btn-primary:hover { background: #00b8e6; transform: translateY(-1px); }
+        .btn-primary:disabled { background: #555; color: #999; cursor: not-allowed; transform: none; }
+        .btn-accent { background: #ff4081; color: white; }
+        .btn-accent:hover { background: #e63973; transform: translateY(-1px); }
+
+        /* --- FILE UPLOAD --- */
+        .file-upload-area {
+            border: 2px dashed #00d2ff44;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            margin-bottom: 12px;
+        }
+        .file-upload-area:hover { border-color: #00d2ff; background: #00d2ff08; }
+        .file-upload-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-upload-area .upload-icon { font-size: 28px; margin-bottom: 6px; }
+        .file-upload-area .upload-text { font-size: 13px; color: #888; }
+
+        /* --- BADGE --- */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .badge-success { background: #4CAF5033; color: #4CAF50; border: 1px solid #4CAF5044; }
+        .badge-warning { background: #ff980033; color: #ff9800; border: 1px solid #ff980044; }
+        .badge-info { background: #00d2ff22; color: #00d2ff; border: 1px solid #00d2ff33; }
+
+        /* --- VARIANT PARAMS TABLE --- */
+        .param-table {
+            width: 100%;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+        .param-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ffffff08;
+        }
+        .param-table td:first-child { color: #888; width: 45%; }
+        .param-table td:last-child { color: #fff; font-weight: 500; }
+
+        /* --- WSN GRID --- */
+        #wsn-grid {
+            display: grid;
+            gap: 2px;
+            margin-top: 14px;
+            justify-content: center;
+            background: #0005;
+            padding: 6px;
+            border-radius: 8px;
+        }
+        .kare {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: #121212;
+            min-width: 0;
+            aspect-ratio: 1;
+        }
+        .kare.acik { background-color: #cfd8dc; }
+        .kare.koyu { background-color: #78909c; }
+        .tas-W { color: #fff; text-shadow: 1px 1px 2px #000; }
+        .tas-B { color: #1a1a1a; text-shadow: 1px 1px 2px #ffffff88; }
+
+        /* --- INPUT --- */
+        input[type="number"] {
+            background: #0d0d25;
+            color: #fff;
+            border: 1px solid #ffffff20;
+            padding: 10px 14px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 14px;
+            margin-top: 6px;
+        }
+        input[type="number"]:focus { outline: none; border-color: #00d2ff; }
+
+        /* --- SPINNER --- */
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid #ffffff44;
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- FEN TEXT --- */
+        .fen-text {
+            color: #ffeb3b;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 12px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- === HEADER === -->
+    <div class="header">
+        <h1>🛰️ WSN Otonom Karar Sistemi</h1>
+        <div class="header-controls">
+            <div class="health-dot checking" id="health-dot" title=""></div>
+            <span class="health-label" id="health-label" data-i18n="health_checking">Sunucu kontrol ediliyor...</span>
+            <button class="lang-btn" id="lang-btn" onclick="dilDegistir()">EN</button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- ======================== PANEL 1: TOPOLOJİ ======================== -->
+        <div class="panel">
+            <h2 data-i18n="panel1_title">1. WSN Topoloji Görselleştirici</h2>
+            <p class="panel-desc" data-i18n="panel1_desc">variants.ini yükle, startFen dizilimi ekrana yansısın.</p>
+
+            <!-- File Upload -->
+            <div class="file-upload-area" id="upload-area">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text" data-i18n="upload_ini">variants.ini Yükle</div>
+                <input type="file" id="iniUpload" accept=".ini">
+            </div>
+
+            <!-- Variant Badge -->
+            <div style="margin-bottom: 12px;">
+                <span class="badge badge-warning" id="variant-badge" data-i18n="variant_not_loaded">Yüklenmedi</span>
+            </div>
+
+            <!-- FEN -->
+            <div class="veri-kutusu">
+                <div class="label" data-i18n="detected_fen">Algılanan FEN:</div>
+                <div class="fen-text" id="fen-metni" data-i18n="fen_none">Yok</div>
+            </div>
+
+            <!-- Variant Params -->
+            <div id="variant-params" style="display:none;">
+                <h3 style="color:#00d2ff; font-size:14px; margin-top:14px;" data-i18n="variant_params_title">Varyant Parametreleri</h3>
+                <table class="param-table" id="param-table"></table>
+            </div>
+
+            <!-- WSN Grid -->
+            <div id="wsn-grid"></div>
+        </div>
+
+        <!-- ======================== PANEL 2: MOTOR ======================== -->
+        <div class="panel">
+            <h2 data-i18n="panel2_title">2. Karar Motoru Çıktısı</h2>
+
+            <div class="veri-kutusu">
+                <div class="label" data-i18n="bestmove_label">API'den Gelen Rota (Bestmove)</div>
+                <div class="deger" id="bestmove" data-i18n="waiting">Bekleniyor...</div>
+            </div>
+            <div class="veri-kutusu">
+                <div class="label" data-i18n="cp_label">Ham CP (Santipawn) Skoru</div>
+                <div class="deger" id="cp" data-i18n="waiting">Bekleniyor...</div>
+            </div>
+
+            <!-- Motor Info -->
+            <div class="veri-kutusu" style="border-left-color: #9c27b0;">
+                <div class="label" data-i18n="variant_status">Varyant Durumu</div>
+                <div class="deger" id="motor-varyant" style="font-size:14px; color:#ff9800;">—</div>
+            </div>
+
+            <button class="btn btn-primary" id="btn-tetikle" onclick="veriCek()" data-i18n="trigger_engine">Motoru Tetikle</button>
+        </div>
+
+        <!-- ======================== PANEL 3: FİLTRE ======================== -->
+        <div class="panel" style="border: 1px solid #ff408133;">
+            <h2 style="color: #ff4081;" data-i18n="panel3_title">3. Özel CP Filtreleme Testi</h2>
+            <p class="panel-desc" data-i18n="panel3_desc">Gelen CP skorunu filtreleme mantığıyla test et.</p>
+
+            <label style="font-size: 13px; color: #ccc;" data-i18n="threshold_label">Minimum Kabul Edilebilir CP Eşiği:</label>
+            <input type="number" id="cp-esik" value="50">
+
+            <button class="btn btn-accent" onclick="filtreTesti()" data-i18n="apply_filter">Filtreyi Uygula</button>
+
+            <div class="veri-kutusu" style="border-left-color: #ff4081; margin-top: 16px;">
+                <div class="label" data-i18n="filter_result_label">Filtre Sonucu (Karar):</div>
+                <div class="deger" id="filtre-sonuc" style="color: #ffeb3b; font-size: 15px;" data-i18n="test_waiting">Test Bekleniyor...</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// =========================================================================
+// API BASE URL - Render backend
+// =========================================================================
+const API_BASE = "https://wsn-api.onrender.com";
+
+// =========================================================================
+// i18n SİSTEMİ — JSON dil dosyaları ile
+// =========================================================================
+let mevcutDil = localStorage.getItem("wsn_dil") || "tr";
+let dilVerisi = {};
+
+async function dilYukle(dil) {
+    try {
+        const resp = await fetch(`lang/${dil}.json`);
+        if (!resp.ok) throw new Error("Dil dosyası bulunamadı");
+        dilVerisi = await resp.json();
+        mevcutDil = dil;
+        localStorage.setItem("wsn_dil", dil);
+        document.documentElement.lang = dil;
+        dilUygula();
+    } catch (err) {
+        console.error("Dil yükleme hatası:", err);
+    }
+}
+
+function dilUygula() {
+    // data-i18n attribute'ı olan tüm elementleri güncelle
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const anahtar = el.getAttribute("data-i18n");
+        if (dilVerisi[anahtar]) {
+            if (el.tagName === "INPUT" && el.type !== "number") {
+                el.placeholder = dilVerisi[anahtar];
+            } else if (el.tagName === "TITLE") {
+                document.title = dilVerisi[anahtar];
+            } else {
+                el.textContent = dilVerisi[anahtar];
+            }
+        }
+    });
+    // Dil butonu
+    document.getElementById("lang-btn").textContent = dilVerisi["lang_switch"] || (mevcutDil === "tr" ? "EN" : "TR");
+}
+
+function dilDegistir() {
+    const yeniDil = mevcutDil === "tr" ? "en" : "tr";
+    dilYukle(yeniDil);
+}
+
+function t(anahtar, degiskenler = {}) {
+    let metin = dilVerisi[anahtar] || anahtar;
+    for (const [k, v] of Object.entries(degiskenler)) {
+        metin = metin.replace(`{${k}}`, v);
+    }
+    return metin;
+}
+
+// =========================================================================
+// HEALTH CHECK — Render cold-start bypass
+// =========================================================================
+async function healthCheck() {
+    const dot = document.getElementById("health-dot");
+    const label = document.getElementById("health-label");
+    dot.className = "health-dot checking";
+    label.textContent = t("health_checking");
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(15000) });
+        if (resp.ok) {
+            dot.className = "health-dot ok";
+            label.textContent = t("health_ok");
+        } else {
+            throw new Error("not ok");
+        }
+    } catch {
+        dot.className = "health-dot fail";
+        label.textContent = t("health_fail");
+        // Cold-start sonrası yeniden dene
+        setTimeout(healthCheck, 10000);
+    }
+}
+
+// =========================================================================
+// VARIANTS.INI PARSER VE TAHTA ÇİZİMİ
+// =========================================================================
+let aktifVariant = null;    // Parse edilmiş varyant verisi
+let aktifIniIcerik = null;  // Ham .ini içeriği (motora gönderilecek)
+let aktifFen = "";
+let gridSatir = 8;
+let gridSutun = 8;
+
+function iniParse(icerik) {
+    const satirlar = icerik.split('\n');
+    const sonuc = {
+        varyantAdi: "",
+        maxRank: 8,
+        maxFile: 8,
+        cylinder: false,
+        drop: false,
+        startFen: "",
+        customPieces: [],
+        promotionRegionWhite: "",
+        promotionRegionBlack: "",
+        promotionPieceTypes: "",
+        tumParametreler: {}
+    };
+
+    for (let satir of satirlar) {
+        satir = satir.trim();
+
+        // Bölüm başlığı: [varyant_adi:temel]
+        if (satir.startsWith('[') && satir.includes(':')) {
+            sonuc.varyantAdi = satir.split('[')[1].split(':')[0].trim();
+            continue;
+        }
+
+        // Yorum satırları — # ile başlayanları atla (ama yorum olmayan key=value çiftlerini al)
+        if (satir.startsWith('#') || !satir.includes('=')) continue;
+
+        const esitIdx = satir.indexOf('=');
+        const anahtar = satir.substring(0, esitIdx).trim();
+        let deger = satir.substring(esitIdx + 1).trim();
+
+        // Satır içi yorumu temizle
+        if (deger.includes('#')) {
+            deger = deger.split('#')[0].trim();
+        }
+
+        sonuc.tumParametreler[anahtar] = deger;
+
+        switch (anahtar) {
+            case 'maxRank': sonuc.maxRank = parseInt(deger) || 8; break;
+            case 'maxFile': sonuc.maxFile = parseInt(deger) || 8; break;
+            case 'cylinder': sonuc.cylinder = deger === 'true'; break;
+            case 'drop': sonuc.drop = deger === 'true'; break;
+            case 'startFen': sonuc.startFen = deger; break;
+            case 'promotionRegionWhite': sonuc.promotionRegionWhite = deger; break;
+            case 'promotionRegionBlack': sonuc.promotionRegionBlack = deger; break;
+            case 'promotionPieceTypes': sonuc.promotionPieceTypes = deger; break;
+        }
+
+        // customPiece parametreleri
+        if (anahtar.startsWith('customPiece')) {
+            sonuc.customPieces.push(deger);
+        }
+    }
+
+    return sonuc;
+}
+
+function varyantPanelGuncelle(varyant) {
+    const params = document.getElementById("variant-params");
+    const tablo = document.getElementById("param-table");
+    const badge = document.getElementById("variant-badge");
+    const motorVaryant = document.getElementById("motor-varyant");
+
+    params.style.display = "block";
+    badge.className = "badge badge-success";
+    badge.textContent = `✓ ${t("active_variant_badge")}: ${varyant.varyantAdi}`;
+    badge.removeAttribute("data-i18n");
+
+    motorVaryant.textContent = varyant.varyantAdi || "—";
+    motorVaryant.style.color = "#4CAF50";
+
+    tablo.innerHTML = `
+        <tr><td data-i18n="variant_name">${t("variant_name")}</td><td>${varyant.varyantAdi}</td></tr>
+        <tr><td data-i18n="grid_size">${t("grid_size")}</td><td>${varyant.maxRank} × ${varyant.maxFile}</td></tr>
+        <tr><td data-i18n="topology">${t("topology")}</td><td>${varyant.cylinder ? t("topology_closed") : t("topology_open")}</td></tr>
+        <tr><td data-i18n="node_injection">${t("node_injection")}</td><td>${varyant.drop ? t("enabled") : t("disabled")}</td></tr>
+        <tr><td data-i18n="custom_pieces">${t("custom_pieces")}</td><td>${varyant.customPieces.length} adet</td></tr>
+        ${varyant.promotionRegionWhite ? `<tr><td data-i18n="promotion_zone">${t("promotion_zone")}</td><td>${varyant.promotionRegionWhite}</td></tr>` : ''}
+    `;
+}
+
+// =========================================================================
+// TAHTA ÇİZİMİ (DİNAMİK GRID)
+// =========================================================================
+function tahtaOlustur(satir = 8, sutun = 8) {
+    const grid = document.getElementById("wsn-grid");
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = `repeat(${sutun}, minmax(28px, 45px))`;
+    grid.style.gridTemplateRows = `repeat(${satir}, minmax(28px, 45px))`;
+
+    let acikKare = true;
+    for (let s = 0; s < satir; s++) {
+        for (let st = 0; st < sutun; st++) {
+            const kare = document.createElement("div");
+            kare.className = "kare " + (acikKare ? "acik" : "koyu");
+            kare.id = `kare-${s}-${st}`;
+            grid.appendChild(kare);
+            acikKare = !acikKare;
+        }
+        if (sutun % 2 === 0) acikKare = !acikKare;
+    }
+}
+
+function fenCiz(fenMetni, satir = 8, sutun = 8) {
+    tahtaOlustur(satir, sutun);
+
+    // FEN'den sadece taş dizilimini al (boşluktan önceki kısım)
+    // Ayrıca [SSSRRRDDD] gibi el taşlarını da ayır
+    let sadeceDizilim = fenMetni.split(" ")[0];
+    // El taşlarını temizle (ör: [SSSRRRDDD])
+    if (sadeceDizilim.includes('[')) {
+        sadeceDizilim = sadeceDizilim.split('[')[0];
+    }
+
+    const fenSatirlari = sadeceDizilim.split("/");
+
+    for (let i = 0; i < fenSatirlari.length; i++) {
+        if (i >= satir) break;
+        const karakterler = fenSatirlari[i].split('');
+        let sutunIdx = 0;
+        let sayi = "";
+
+        for (let j = 0; j < karakterler.length; j++) {
+            const k = karakterler[j];
+            if (!isNaN(k)) {
+                sayi += k; // Çok basamaklı sayılar için (ör: 10)
+            } else {
+                if (sayi) {
+                    sutunIdx += parseInt(sayi);
+                    sayi = "";
+                }
+                const kare = document.getElementById(`kare-${i}-${sutunIdx}`);
+                if (kare) {
+                    kare.innerText = k;
+                    kare.classList.add(k === k.toUpperCase() ? "tas-W" : "tas-B");
+                }
+                sutunIdx++;
+            }
+        }
+        if (sayi) sutunIdx += parseInt(sayi); // Satır sonundaki sayı
+    }
+}
+
+// INI dosyası yükleme eventi
+document.getElementById('iniUpload').addEventListener('change', function(e) {
+    const dosya = e.target.files[0];
+    if (!dosya) return;
+
+    const okuyucu = new FileReader();
+    okuyucu.onload = function(e) {
+        aktifIniIcerik = e.target.result;
+        const varyant = iniParse(aktifIniIcerik);
+        aktifVariant = varyant;
+
+        gridSatir = varyant.maxRank;
+        gridSutun = varyant.maxFile;
+
+        if (varyant.startFen) {
+            aktifFen = varyant.startFen;
+            document.getElementById("fen-metni").innerText = aktifFen;
+            document.getElementById("fen-metni").removeAttribute("data-i18n");
+            fenCiz(aktifFen, gridSatir, gridSutun);
+        } else {
+            document.getElementById("fen-metni").innerText = t("startfen_not_found");
+        }
+
+        varyantPanelGuncelle(varyant);
+    };
+    okuyucu.readAsText(dosya);
+});
+
+// =========================================================================
+// API VERİ ÇEKME — Varyant entegreli
+// =========================================================================
+let sonCpSkoru = 0;
+
+async function veriCek() {
+    const btnTetikle = document.getElementById("btn-tetikle");
+    const bestmoveEl = document.getElementById("bestmove");
+    const cpEl = document.getElementById("cp");
+    const filtreEl = document.getElementById("filtre-sonuc");
+
+    btnTetikle.disabled = true;
+    bestmoveEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
+    bestmoveEl.removeAttribute("data-i18n");
+    cpEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
+    cpEl.removeAttribute("data-i18n");
+    filtreEl.textContent = t("data_waiting");
+    filtreEl.removeAttribute("data-i18n");
+
+    // İstek gövdesi hazırla
+    const payload = {};
+
+    if (aktifFen) {
+        payload.fen = aktifFen;
+    }
+    if (aktifVariant && aktifVariant.varyantAdi) {
+        payload.varyant_adi = aktifVariant.varyantAdi;
+    }
+    if (aktifIniIcerik) {
+        payload.variants_ini = aktifIniIcerik;
+    }
+
+    // Retry mekanizması (Render cold-start için)
+    const MAX_RETRY = 3;
+    let basarili = false;
+
+    for (let deneme = 1; deneme <= MAX_RETRY; deneme++) {
+        try {
+            const resp = await fetch(`${API_BASE}/api/karar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(30000)
+            });
+
+            if (!resp.ok) throw new Error(t("server_rejected"));
+
+            const data = await resp.json();
+
+            if (data.hata) {
+                bestmoveEl.textContent = `${t("error")}: ${data.hata}`;
+                cpEl.textContent = t("error");
+            } else {
+                bestmoveEl.textContent = data.bestmove || t("error");
+                cpEl.textContent = data.cp_skoru !== null ? data.cp_skoru : "0";
+                sonCpSkoru = data.cp_skoru || 0;
+
+                // Motor varyant bilgisini güncelle
+                const motorVaryant = document.getElementById("motor-varyant");
+                motorVaryant.textContent = `${data.varyant || "standart"} (${data.gecikme_ms}ms)`;
+            }
+
+            basarili = true;
+            break;
+
+        } catch (err) {
+            if (deneme < MAX_RETRY) {
+                bestmoveEl.innerHTML = `<span class="spinner"></span>${t("retry_info", {n: deneme, max: MAX_RETRY})}`;
+                await new Promise(r => setTimeout(r, 3000));
+            } else {
+                bestmoveEl.textContent = t("connection_error");
+                cpEl.textContent = t("error");
+            }
+        }
+    }
+
+    btnTetikle.disabled = false;
+}
+
+// =========================================================================
+// CP FİLTRELEME TEST
+// =========================================================================
+function filtreTesti() {
+    const esik = parseInt(document.getElementById("cp-esik").value);
+    const sonucKutusu = document.getElementById("filtre-sonuc");
+
+    if (sonCpSkoru === 0 || isNaN(sonCpSkoru)) {
+        sonucKutusu.textContent = t("need_cp_first");
+        sonucKutusu.style.color = "#ffeb3b";
+        return;
+    }
+
+    if (sonCpSkoru >= esik) {
+        sonucKutusu.textContent = t("filter_success", { cp: sonCpSkoru, threshold: esik });
+        sonucKutusu.style.color = "#4CAF50";
+    } else {
+        sonucKutusu.textContent = t("filter_rejected", { cp: sonCpSkoru, threshold: esik });
+        sonucKutusu.style.color = "#f44336";
+    }
+}
+
+// =========================================================================
+// BAŞLANGIÇ
+// =========================================================================
+(async function init() {
+    tahtaOlustur();
+    await dilYukle(mevcutDil);
+    healthCheck();
+})();
+</script>
+
+</body>
+</html>
