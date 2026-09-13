@@ -189,5 +189,83 @@ def karar_al():
             "mesaj": "Sistem motoru tetikleyemedi."
         }), 500
 
+@app.route('/api/legalmoves', methods=['POST'])
+def legal_moves():
+    try:
+        veri = request.get_json() or {}
+        fen = veri.get('fen', '')
+        varyant_adi = veri.get('varyant_adi', '')
+        variants_ini_icerik = veri.get('variants_ini', '')
+
+        komutlar = []
+
+        if variants_ini_icerik and varyant_adi:
+            dosya_adi = f"temp_variants_{uuid.uuid4().hex}.ini"
+            gecici_ini = os.path.join(VARIANTS_DIR, dosya_adi)
+            
+            # Windows CRLF sorununu engelle
+            if isinstance(variants_ini_icerik, str):
+                ini_metin = variants_ini_icerik
+            else:
+                ini_metin = json.dumps(variants_ini_icerik)
+            
+            ini_metin = ini_metin.replace('\r\n', '\n')
+            
+            with open(gecici_ini, "w", encoding="utf-8", newline='\n') as f:
+                f.write(ini_metin)
+            
+            komutlar.append(f"setoption name VariantPath value {gecici_ini}")
+            komutlar.append(f"setoption name UCI_Variant value {varyant_adi}")
+
+        if fen:
+            komutlar.append(f"position fen {fen}")
+        else:
+            komutlar.append("position startpos")
+
+        komutlar.append("go perft 1")
+
+        motor = subprocess.Popen(
+            exe_yolu,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1
+        )
+
+        for cmd in komutlar:
+            motor.stdin.write(cmd + "\n")
+            motor.stdin.flush()
+
+        legal_moves = []
+        while True:
+            satir = motor.stdout.readline().strip()
+            
+            if not satir:
+                continue
+                
+            # perft 1 çıktısı genelde "e2e4: 1" formatındadır
+            if ": " in satir:
+                parts = satir.split(": ")
+                if parts[1].isdigit():
+                    legal_moves.append(parts[0])
+            
+            if "Nodes searched:" in satir:
+                break
+                
+        motor.terminate()
+        
+        if variants_ini_icerik and 'gecici_ini' in locals() and os.path.exists(gecici_ini):
+            try:
+                os.remove(gecici_ini)
+            except OSError:
+                pass
+
+        return jsonify({"legal_moves": legal_moves})
+
+    except Exception as e:
+        return jsonify({"hata": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -655,6 +655,61 @@ function tahtaToFen(sira = 'w') {
     return `${boardPart} ${sira} - - 0 1`;
 }
 
+let mevcutYasalHamleler = [];
+
+function koordinatToHamle(kalkisId, varisId) {
+    const sutunHarfleri = "abcdefghij";
+    const toplam = aktifVariant ? aktifVariant.maxRank : 8;
+    
+    const kParts = kalkisId.split('-');
+    const vParts = varisId.split('-');
+    
+    const kRow = parseInt(kParts[1]), kCol = parseInt(kParts[2]);
+    const vRow = parseInt(vParts[1]), vCol = parseInt(vParts[2]);
+    
+    const kStr = sutunHarfleri[kCol] + (toplam - kRow);
+    const vStr = sutunHarfleri[vCol] + (toplam - vRow);
+    
+    return kStr + vStr;
+}
+
+async function yasalHamleleriGetir() {
+    mevcutYasalHamleler = [];
+    const payload = {};
+    if (aktifFen) payload.fen = aktifFen;
+    if (aktifVariant && aktifVariant.varyantAdi) payload.varyant_adi = aktifVariant.varyantAdi;
+    if (aktifIniIcerik) payload.variants_ini = aktifIniIcerik;
+
+    const endpoints = [
+        `${API_BASE}/api/legalmoves`,
+        "https://wsn-api.onrender.com/api/legalmoves"
+    ];
+
+    for (const url of endpoints) {
+        try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 8000);
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            clearTimeout(tid);
+
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.legal_moves) {
+                    mevcutYasalHamleler = data.legal_moves;
+                    break;
+                }
+            }
+        } catch (e) {
+            // Sessizce geç
+        }
+    }
+}
+
 function kareTiklandi(event) {
     if (siraKimde !== 'w') return; // Sadece beyaz (kullanıcı) oynayabilir
 
@@ -678,6 +733,23 @@ function kareTiklandi(event) {
             kare.classList.add("secili");
             seciliKareId = kare.id;
             return;
+        }
+        
+        // Yasal hamle kontrolü (eğer yasalHamleler listesi doluysa)
+        const denenenHamle = koordinatToHamle(seciliKareId, kare.id);
+        
+        if (mevcutYasalHamleler && mevcutYasalHamleler.length > 0) {
+            const promosyonlu = mevcutYasalHamleler.find(h => h.startsWith(denenenHamle));
+            if (!promosyonlu) {
+                // Yasal olmayan hamle denendi
+                kare.style.backgroundColor = "#ff5252";
+                setTimeout(() => {
+                    kare.style.backgroundColor = "";
+                }, 300);
+                seciliKare.classList.remove("secili");
+                seciliKareId = null;
+                return;
+            }
         }
         
         // Hamleyi Uygula (seciliKare -> kare)
@@ -739,6 +811,7 @@ document.getElementById('iniUpload').addEventListener('change', function(e) {
             document.getElementById("fen-metni").innerText = aktifFen;
             document.getElementById("fen-metni").removeAttribute("data-i18n");
             fenCiz(aktifFen, gridSatir, gridSutun);
+            yasalHamleleriGetir(); // İlk yasal hamleleri getir
         } else {
             document.getElementById("fen-metni").innerText = t("startfen_not_found");
         }
@@ -946,6 +1019,7 @@ function rotaVurgula(bestmove) {
             aktifFen = tahtaToFen('w');
             document.getElementById("fen-metni").textContent = aktifFen;
             siraKimde = 'w';
+            yasalHamleleriGetir(); // Beyazın yasal hamlelerini hazırla
         }
     }
 
