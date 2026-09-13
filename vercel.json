@@ -1,6 +1,7 @@
 {
   "rewrites": [
-    { "source": "/lang/:path*", "destination": "/lang/:path*" },
+    { "source": "/api/(.*)", "destination": "/api/index.py" },
+    { "source": "/lang/(.*)", "destination": "/lang/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

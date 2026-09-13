@@ -323,10 +323,10 @@
     </div>
 
 <script>
-// =========================================================================
-// API BASE URL - Render backend
-// =========================================================================
-const API_BASE = "https://wsn-api.onrender.com";
+// API BASE URL - Dynamic for Vercel Serverless / Render fallback
+const API_BASE = window.location.hostname.includes("vercel.app") 
+    ? window.location.origin 
+    : "https://wsn-api.onrender.com";
 
 // =========================================================================
 // i18n SİSTEMİ — JSON dil dosyaları ile
