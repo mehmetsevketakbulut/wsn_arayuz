@@ -13,10 +13,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # --- FAIRY-STOCKFISH MOTOR KURULUMU ---
 if os.name == 'nt':
-    # Windows (lokal geliştirme)
     exe_yolu = os.path.join(BASE_DIR, "fairy-stockfish-largeboard_x86-64-bmi2.exe")
 else:
-    # Linux (Vercel Serverless & Render) - /tmp/ geçici bellekte çalıştır
     exe_yolu = "/tmp/fairy-stockfish-largeboard_x86-64"
     if not os.path.exists(exe_yolu):
         zip_path = os.path.join(BASE_DIR, "motor.zip")
@@ -72,12 +70,25 @@ def karar_al():
 
         if variants_ini_icerik:
             gecici_ini = os.path.join(VARIANTS_DIR, f"variants_{int(time.time()*1000)}.ini")
+
+            # String veya dict kontrolü
+            if isinstance(variants_ini_icerik, dict):
+                section = varyant_adi or "wsn_gelismis_ag"
+                satirlar = [f"[{section}:chess]"]
+                for k, v in variants_ini_icerik.items():
+                    satirlar.append(f"{k} = {v}")
+                ini_metin = "\n".join(satirlar)
+            elif isinstance(variants_ini_icerik, str):
+                ini_metin = variants_ini_icerik
+            else:
+                ini_metin = str(variants_ini_icerik)
+
             with open(gecici_ini, 'w', encoding='utf-8') as f:
-                f.write(variants_ini_icerik)
+                f.write(ini_metin)
             kullanilan_variants_path = gecici_ini
 
-            if not varyant_adi:
-                for satir in variants_ini_icerik.split('\n'):
+            if not varyant_adi and ini_metin:
+                for satir in ini_metin.split('\n'):
                     satir = satir.strip()
                     if satir.startswith('[') and ':' in satir:
                         varyant_adi = satir.split('[')[1].split(':')[0].strip()
