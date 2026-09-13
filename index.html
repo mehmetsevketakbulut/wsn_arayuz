@@ -234,6 +234,49 @@
             word-wrap: break-word;
             line-height: 1.6;
         }
+
+        /* --- ROTA VURGULAMA (BESTMOVE HIGHLIGHT) --- */
+        .kare.rota-kalkis {
+            background: #4CAF50 !important;
+            box-shadow: 0 0 12px #4CAF50aa, inset 0 0 6px #ffffff44;
+            animation: rotaPulse 1.2s ease-in-out infinite;
+            border-radius: 4px;
+        }
+        .kare.rota-varis {
+            background: #FFD700 !important;
+            box-shadow: 0 0 14px #FFD700aa, inset 0 0 6px #ffffff44;
+            animation: rotaPulse 1.2s ease-in-out infinite 0.3s;
+            border-radius: 4px;
+        }
+        @keyframes rotaPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .rota-ok {
+            font-size: 10px;
+            color: #4CAF50;
+            margin-top: 6px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* --- RAPOR BUTONU --- */
+        .btn-report {
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            width: 100%;
+            margin-top: 10px;
+            transition: all 0.2s;
+            display: none;
+        }
+        .btn-report:hover { background: linear-gradient(135deg, #ab47bc, #8e24aa); transform: translateY(-1px); }
+        .btn-report.visible { display: block; }
     </style>
 </head>
 <body>
@@ -303,6 +346,7 @@
             </div>
 
             <button class="btn btn-primary" id="btn-tetikle" onclick="veriCek()" data-i18n="trigger_engine">Motoru Tetikle</button>
+            <button class="btn-report" id="btn-rapor" onclick="raporIndir()">📄 Otonom Karar Raporunu İndir (.json)</button>
         </div>
 
         <!-- ======================== PANEL 3: FİLTRE ======================== -->
@@ -651,6 +695,27 @@ async function veriCek() {
 
                 const motorVaryant = document.getElementById("motor-varyant");
                 motorVaryant.textContent = `${data.varyant || "standart"} (${data.gecikme_ms}ms)`;
+
+                // Rota vurgulama
+                if (data.bestmove) {
+                    rotaVurgula(data.bestmove);
+                }
+
+                // Rapor verilerini sakla
+                sonRaporVerisi = {
+                    tarih: new Date().toISOString(),
+                    varyant: data.varyant || "standart",
+                    fen: data.fen || "startpos",
+                    bestmove: data.bestmove,
+                    cp_skoru: data.cp_skoru,
+                    gecikme_ms: data.gecikme_ms,
+                    motor: data.motor,
+                    grid: aktifVariant ? `${aktifVariant.maxRank}x${aktifVariant.maxFile}` : "8x8",
+                    topoloji: aktifVariant && aktifVariant.cylinder ? "Kapalı Devre (Silindirik)" : "Açık",
+                    filtre_esik: parseInt(document.getElementById("cp-esik").value),
+                    filtre_sonuc: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value) ? "ONAYLANDI" : "REDDEDİLDİ"
+                };
+                document.getElementById("btn-rapor").classList.add("visible");
             }
 
             basarili = true;
@@ -688,6 +753,119 @@ function filtreTesti() {
         sonucKutusu.textContent = t("filter_rejected", { cp: sonCpSkoru, threshold: esik });
         sonucKutusu.style.color = "#f44336";
     }
+}
+
+// =========================================================================
+// ROTA VURGULAMA (BESTMOVE HIGHLIGHT)
+// =========================================================================
+let sonRaporVerisi = null;
+
+function hamleToKoordinat(hamle) {
+    // UCI notasyonu: "g4g7" -> kalkış (g,4) hedef (g,7)
+    // Sütun: a=0, b=1, ... j=9
+    // Satır: 1=son satır, ... 10=ilk satır (FEN'de ters)
+    if (!hamle || hamle.length < 4) return null;
+
+    const sutunHarfleri = "abcdefghij";
+    const kalkisSutun = sutunHarfleri.indexOf(hamle[0]);
+    const varisSutun = sutunHarfleri.indexOf(hamle[hamle.length === 4 ? 2 : 2]);
+
+    // Satır numarasını parse et (1 veya 2 haneli olabilir: a1 veya a10)
+    let kalkisSatirStr, varisSatirStr;
+    if (hamle.length === 5) {
+        // Ör: "a10b5" veya "a1b10" — burada uzunluğa göre ayır
+        // En yaygın: ilk 2 karakter kalkış (harf+sayı), son 2 karakter varış
+        kalkisSatirStr = hamle.substring(1, 2);
+        varisSatirStr = hamle.substring(3, 5);
+        if (isNaN(parseInt(varisSatirStr))) {
+            kalkisSatirStr = hamle.substring(1, 3);
+            varisSatirStr = hamle.substring(4, 5);
+        }
+    } else if (hamle.length === 4) {
+        kalkisSatirStr = hamle[1];
+        varisSatirStr = hamle[3];
+    } else {
+        // 6 karakter: a10b10
+        kalkisSatirStr = hamle.substring(1, 3);
+        varisSatirStr = hamle.substring(4, 6);
+    }
+
+    const toplam = aktifVariant ? aktifVariant.maxRank : 8;
+    const kalkisSatir = toplam - parseInt(kalkisSatirStr);
+    const varisSatir = toplam - parseInt(varisSatirStr);
+
+    return {
+        kalkis: { satir: kalkisSatir, sutun: kalkisSutun },
+        varis: { satir: varisSatir, sutun: varisSutun }
+    };
+}
+
+function rotaVurgula(bestmove) {
+    // Önceki vurguları temizle
+    document.querySelectorAll(".rota-kalkis, .rota-varis").forEach(el => {
+        el.classList.remove("rota-kalkis", "rota-varis");
+    });
+    document.querySelectorAll(".rota-ok").forEach(el => el.remove());
+
+    const koordinatlar = hamleToKoordinat(bestmove);
+    if (!koordinatlar) return;
+
+    const kalkisKare = document.getElementById(`kare-${koordinatlar.kalkis.satir}-${koordinatlar.kalkis.sutun}`);
+    const varisKare = document.getElementById(`kare-${koordinatlar.varis.satir}-${koordinatlar.varis.sutun}`);
+
+    if (kalkisKare) {
+        kalkisKare.classList.add("rota-kalkis");
+    }
+    if (varisKare) {
+        varisKare.classList.add("rota-varis");
+    }
+
+    // Bestmove alanına rota yönü göster
+    const bestmoveEl = document.getElementById("bestmove");
+    const from = bestmove.substring(0, bestmove.length / 2);
+    const to = bestmove.substring(bestmove.length / 2);
+    bestmoveEl.innerHTML = `${bestmove} <span class="rota-ok">[ 🟢 ${from} ➜ 🟡 ${to} ]</span>`;
+}
+
+// =========================================================================
+// RAPOR İNDİRME (KARAR RAPORU EXPORT)
+// =========================================================================
+function raporIndir() {
+    if (!sonRaporVerisi) return;
+
+    const rapor = {
+        baslik: "TÜBİTAK 1001 - WSN Otonom Karar Raporu",
+        uretim_tarihi: sonRaporVerisi.tarih,
+        sistem: {
+            motor: sonRaporVerisi.motor,
+            varyant: sonRaporVerisi.varyant,
+            grid_boyutu: sonRaporVerisi.grid,
+            topoloji: sonRaporVerisi.topoloji
+        },
+        analiz: {
+            fen_dizilimi: sonRaporVerisi.fen,
+            en_iyi_rota: sonRaporVerisi.bestmove,
+            cp_skoru: sonRaporVerisi.cp_skoru,
+            hesaplama_suresi_ms: sonRaporVerisi.gecikme_ms
+        },
+        filtreleme: {
+            esik_degeri: sonRaporVerisi.filtre_esik,
+            karar: sonRaporVerisi.filtre_sonuc,
+            aciklama: sonRaporVerisi.cp_skoru >= sonRaporVerisi.filtre_esik
+                ? "Rota güvenilir bulundu, iletişim onaylandı."
+                : "Rota güvenilirlik eşiğinin altında, iletişim reddedildi."
+        }
+    };
+
+    const blob = new Blob([JSON.stringify(rapor, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `wsn_karar_raporu_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // =========================================================================
