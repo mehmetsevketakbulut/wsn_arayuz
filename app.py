@@ -5,6 +5,8 @@ import time
 import os
 import zipfile
 import tempfile
+import uuid
+import json
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -197,32 +199,7 @@ def legal_moves():
         varyant_adi = veri.get('varyant_adi', '')
         variants_ini_icerik = veri.get('variants_ini', '')
 
-        komutlar = []
-
-        if variants_ini_icerik and varyant_adi:
-            dosya_adi = f"temp_variants_{uuid.uuid4().hex}.ini"
-            gecici_ini = os.path.join(VARIANTS_DIR, dosya_adi)
-            
-            # Windows CRLF sorununu engelle
-            if isinstance(variants_ini_icerik, str):
-                ini_metin = variants_ini_icerik
-            else:
-                ini_metin = json.dumps(variants_ini_icerik)
-            
-            ini_metin = ini_metin.replace('\r\n', '\n')
-            
-            with open(gecici_ini, "w", encoding="utf-8", newline='\n') as f:
-                f.write(ini_metin)
-            
-            komutlar.append(f"setoption name VariantPath value {gecici_ini}")
-            komutlar.append(f"setoption name UCI_Variant value {varyant_adi}")
-
-        if fen:
-            komutlar.append(f"position fen {fen}")
-        else:
-            komutlar.append("position startpos")
-
-        komutlar.append("go perft 1")
+        gecici_ini = None
 
         motor = subprocess.Popen(
             exe_yolu,
@@ -233,29 +210,73 @@ def legal_moves():
             bufsize=1
         )
 
-        for cmd in komutlar:
-            motor.stdin.write(cmd + "\n")
+        # UCI başlat ve uciok bekle
+        motor.stdin.write("uci\n")
+        motor.stdin.flush()
+        while True:
+            satir = motor.stdout.readline().strip()
+            if satir == "uciok":
+                break
+
+        # Varyant dosyası varsa yükle
+        if variants_ini_icerik and varyant_adi:
+            dosya_adi = f"temp_variants_{uuid.uuid4().hex}.ini"
+            gecici_ini = os.path.join(VARIANTS_DIR, dosya_adi)
+
+            if isinstance(variants_ini_icerik, str):
+                ini_metin = variants_ini_icerik
+            else:
+                ini_metin = json.dumps(variants_ini_icerik)
+
+            ini_metin = ini_metin.replace('\r\n', '\n')
+
+            with open(gecici_ini, "w", encoding="utf-8", newline='\n') as f:
+                f.write(ini_metin)
+
+            motor.stdin.write(f"setoption name VariantPath value {gecici_ini}\n")
             motor.stdin.flush()
+            motor.stdin.write(f"setoption name UCI_Variant value {varyant_adi}\n")
+            motor.stdin.flush()
+
+        # isready/readyok bekle
+        motor.stdin.write("isready\n")
+        motor.stdin.flush()
+        while True:
+            satir = motor.stdout.readline().strip()
+            if satir == "readyok":
+                break
+
+        # Pozisyon ayarla
+        if fen:
+            motor.stdin.write(f"position fen {fen}\n")
+        else:
+            motor.stdin.write("position startpos\n")
+        motor.stdin.flush()
+
+        # go perft 1 ile yasal hamleleri al
+        motor.stdin.write("go perft 1\n")
+        motor.stdin.flush()
 
         legal_moves = []
         while True:
             satir = motor.stdout.readline().strip()
-            
+
             if not satir:
                 continue
-                
-            # perft 1 çıktısı genelde "e2e4: 1" formatındadır
-            if ": " in satir:
+
+            if ": " in satir and "Nodes" not in satir:
                 parts = satir.split(": ")
-                if parts[1].isdigit():
-                    legal_moves.append(parts[0])
-            
+                if len(parts) == 2 and parts[1].strip().isdigit():
+                    legal_moves.append(parts[0].strip())
+
             if "Nodes searched:" in satir:
                 break
-                
+
+        motor.stdin.write("quit\n")
+        motor.stdin.flush()
         motor.terminate()
-        
-        if variants_ini_icerik and 'gecici_ini' in locals() and os.path.exists(gecici_ini):
+
+        if gecici_ini and os.path.exists(gecici_ini):
             try:
                 os.remove(gecici_ini)
             except OSError:
