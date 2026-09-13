@@ -380,7 +380,7 @@ function t(anahtar, degiskenler = {}) {
 }
 
 // =========================================================================
-// HEALTH CHECK — Render cold-start bypass
+// HEALTH CHECK
 // =========================================================================
 async function healthCheck() {
     const dot = document.getElementById("health-dot");
@@ -389,19 +389,33 @@ async function healthCheck() {
     label.textContent = t("health_checking");
 
     try {
-        const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(15000) });
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 8000);
+        const resp = await fetch(`${API_BASE}/api/health`, { signal: controller.signal });
+        clearTimeout(tid);
         if (resp.ok) {
             dot.className = "health-dot ok";
             label.textContent = t("health_ok");
-        } else {
-            throw new Error("not ok");
+            return;
         }
-    } catch {
-        dot.className = "health-dot fail";
-        label.textContent = t("health_fail");
-        // Cold-start sonrası yeniden dene
-        setTimeout(healthCheck, 10000);
+    } catch (e) {
+        console.warn("Health check primary failed, trying fallback...", e);
     }
+
+    try {
+        const controller = new AbortController();
+        const tid = setTimeout(() => controller.abort(), 8000);
+        const resp = await fetch("https://wsn-api.onrender.com/api/health", { signal: controller.signal });
+        clearTimeout(tid);
+        if (resp.ok) {
+            dot.className = "health-dot ok";
+            label.textContent = t("health_ok");
+            return;
+        }
+    } catch (e) {}
+
+    dot.className = "health-dot fail";
+    label.textContent = t("health_fail");
 }
 
 // =========================================================================
@@ -432,20 +446,17 @@ function iniParse(icerik) {
     for (let satir of satirlar) {
         satir = satir.trim();
 
-        // Bölüm başlığı: [varyant_adi:temel]
         if (satir.startsWith('[') && satir.includes(':')) {
             sonuc.varyantAdi = satir.split('[')[1].split(':')[0].trim();
             continue;
         }
 
-        // Yorum satırları — # ile başlayanları atla (ama yorum olmayan key=value çiftlerini al)
         if (satir.startsWith('#') || !satir.includes('=')) continue;
 
         const esitIdx = satir.indexOf('=');
         const anahtar = satir.substring(0, esitIdx).trim();
         let deger = satir.substring(esitIdx + 1).trim();
 
-        // Satır içi yorumu temizle
         if (deger.includes('#')) {
             deger = deger.split('#')[0].trim();
         }
@@ -463,7 +474,6 @@ function iniParse(icerik) {
             case 'promotionPieceTypes': sonuc.promotionPieceTypes = deger; break;
         }
 
-        // customPiece parametreleri
         if (anahtar.startsWith('customPiece')) {
             sonuc.customPieces.push(deger);
         }
@@ -521,10 +531,7 @@ function tahtaOlustur(satir = 8, sutun = 8) {
 function fenCiz(fenMetni, satir = 8, sutun = 8) {
     tahtaOlustur(satir, sutun);
 
-    // FEN'den sadece taş dizilimini al (boşluktan önceki kısım)
-    // Ayrıca [SSSRRRDDD] gibi el taşlarını da ayır
     let sadeceDizilim = fenMetni.split(" ")[0];
-    // El taşlarını temizle (ör: [SSSRRRDDD])
     if (sadeceDizilim.includes('[')) {
         sadeceDizilim = sadeceDizilim.split('[')[0];
     }
@@ -540,7 +547,7 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
         for (let j = 0; j < karakterler.length; j++) {
             const k = karakterler[j];
             if (!isNaN(k)) {
-                sayi += k; // Çok basamaklı sayılar için (ör: 10)
+                sayi += k;
             } else {
                 if (sayi) {
                     sutunIdx += parseInt(sayi);
@@ -554,7 +561,7 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
                 sutunIdx++;
             }
         }
-        if (sayi) sutunIdx += parseInt(sayi); // Satır sonundaki sayı
+        if (sayi) sutunIdx += parseInt(sayi);
     }
 }
 
@@ -605,33 +612,32 @@ async function veriCek() {
     filtreEl.textContent = t("data_waiting");
     filtreEl.removeAttribute("data-i18n");
 
-    // İstek gövdesi hazırla
     const payload = {};
+    if (aktifFen) payload.fen = aktifFen;
+    if (aktifVariant && aktifVariant.varyantAdi) payload.varyant_adi = aktifVariant.varyantAdi;
+    if (aktifIniIcerik) payload.variants_ini = aktifIniIcerik;
 
-    if (aktifFen) {
-        payload.fen = aktifFen;
-    }
-    if (aktifVariant && aktifVariant.varyantAdi) {
-        payload.varyant_adi = aktifVariant.varyantAdi;
-    }
-    if (aktifIniIcerik) {
-        payload.variants_ini = aktifIniIcerik;
-    }
+    const endpoints = [
+        `${API_BASE}/api/karar`,
+        "https://wsn-api.onrender.com/api/karar"
+    ];
 
-    // Retry mekanizması (Render cold-start için)
-    const MAX_RETRY = 3;
     let basarili = false;
 
-    for (let deneme = 1; deneme <= MAX_RETRY; deneme++) {
+    for (const url of endpoints) {
         try {
-            const resp = await fetch(`${API_BASE}/api/karar`, {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 12000);
+
+            const resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(30000)
+                signal: controller.signal
             });
+            clearTimeout(tid);
 
-            if (!resp.ok) throw new Error(t("server_rejected"));
+            if (!resp.ok) throw new Error("Server status " + resp.status);
 
             const data = await resp.json();
 
@@ -643,23 +649,20 @@ async function veriCek() {
                 cpEl.textContent = data.cp_skoru !== null ? data.cp_skoru : "0";
                 sonCpSkoru = data.cp_skoru || 0;
 
-                // Motor varyant bilgisini güncelle
                 const motorVaryant = document.getElementById("motor-varyant");
                 motorVaryant.textContent = `${data.varyant || "standart"} (${data.gecikme_ms}ms)`;
             }
 
             basarili = true;
             break;
-
         } catch (err) {
-            if (deneme < MAX_RETRY) {
-                bestmoveEl.innerHTML = `<span class="spinner"></span>${t("retry_info", {n: deneme, max: MAX_RETRY})}`;
-                await new Promise(r => setTimeout(r, 3000));
-            } else {
-                bestmoveEl.textContent = t("connection_error");
-                cpEl.textContent = t("error");
-            }
+            console.warn(`Fetch error for ${url}:`, err);
         }
+    }
+
+    if (!basarili) {
+        bestmoveEl.textContent = t("connection_error");
+        cpEl.textContent = t("error");
     }
 
     btnTetikle.disabled = false;
