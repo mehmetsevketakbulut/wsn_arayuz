@@ -194,9 +194,16 @@
             color: #121212;
             min-width: 0;
             aspect-ratio: 1;
+            cursor: pointer;
+            user-select: none;
         }
         .kare.acik { background-color: #cfd8dc; }
         .kare.koyu { background-color: #78909c; }
+        .kare.secili {
+            background-color: #2196F3 !important;
+            box-shadow: inset 0 0 10px #ffffffaa;
+            border-radius: 4px;
+        }
         .tas-W { color: #fff; text-shadow: 1px 1px 2px #000; }
         .tas-B { color: #1a1a1a; text-shadow: 1px 1px 2px #ffffff88; }
 
@@ -551,6 +558,12 @@ function varyantPanelGuncelle(varyant) {
 }
 
 // =========================================================================
+// OYUN DURUMU (STATE)
+// =========================================================================
+let seciliKareId = null;
+let siraKimde = 'w'; // 'w' = Kullanıcı(Beyaz), 'b' = Motor(Siyah)
+
+// =========================================================================
 // TAHTA ÇİZİMİ (DİNAMİK GRID)
 // =========================================================================
 function tahtaOlustur(satir = 8, sutun = 8) {
@@ -565,6 +578,7 @@ function tahtaOlustur(satir = 8, sutun = 8) {
             const kare = document.createElement("div");
             kare.className = "kare " + (acikKare ? "acik" : "koyu");
             kare.id = `kare-${s}-${st}`;
+            kare.addEventListener('click', kareTiklandi);
             grid.appendChild(kare);
             acikKare = !acikKare;
         }
@@ -609,6 +623,98 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
     }
 }
 
+function tahtaToFen(sira = 'w') {
+    const satir = aktifVariant ? aktifVariant.maxRank : 8;
+    const sutun = aktifVariant ? aktifVariant.maxFile : 8;
+    let fenSatirlari = [];
+
+    for (let i = 0; i < satir; i++) {
+        let bosSayaci = 0;
+        let satirString = "";
+        for (let j = 0; j < sutun; j++) {
+            const kare = document.getElementById(`kare-${i}-${j}`);
+            const tas = kare ? kare.innerText : "";
+            
+            if (tas) {
+                if (bosSayaci > 0) {
+                    satirString += bosSayaci;
+                    bosSayaci = 0;
+                }
+                satirString += tas;
+            } else {
+                bosSayaci++;
+            }
+        }
+        if (bosSayaci > 0) {
+            satirString += bosSayaci;
+        }
+        fenSatirlari.push(satirString);
+    }
+    
+    const boardPart = fenSatirlari.join("/");
+    return `${boardPart} ${sira} - - 0 1`;
+}
+
+function kareTiklandi(event) {
+    if (siraKimde !== 'w') return; // Sadece beyaz (kullanıcı) oynayabilir
+
+    const kare = event.currentTarget;
+    const tas = kare.innerText;
+    const isWhite = tas && tas === tas.toUpperCase();
+
+    if (seciliKareId) {
+        const seciliKare = document.getElementById(seciliKareId);
+        
+        // Aynı kareye tıklandıysa seçimi kaldır
+        if (seciliKareId === kare.id) {
+            seciliKare.classList.remove("secili");
+            seciliKareId = null;
+            return;
+        }
+        
+        // Başka bir beyaz taşa tıklandıysa seçimi ona geçir
+        if (isWhite) {
+            seciliKare.classList.remove("secili");
+            kare.classList.add("secili");
+            seciliKareId = kare.id;
+            return;
+        }
+        
+        // Hamleyi Uygula (seciliKare -> kare)
+        const movingTas = seciliKare.innerText;
+        kare.innerText = movingTas;
+        kare.className = seciliKare.className; // tas-W vs kopyala
+        kare.classList.remove("secili");
+        
+        // Rota vurgusunu temizle (kullanıcı hamlesi de belli olsun)
+        document.querySelectorAll(".rota-kalkis, .rota-varis").forEach(el => {
+            el.classList.remove("rota-kalkis", "rota-varis");
+        });
+        kare.classList.add("rota-varis");
+        seciliKare.classList.add("rota-kalkis");
+
+        seciliKare.innerText = "";
+        seciliKare.classList.remove("tas-W", "tas-B", "secili");
+
+        seciliKareId = null;
+        siraKimde = 'b';
+        
+        // Yeni FEN üret ve motora gönder
+        aktifFen = tahtaToFen('b');
+        document.getElementById("fen-metni").textContent = aktifFen;
+        
+        // Otomatik motoru tetikle
+        veriCek();
+
+    } else {
+        // Seçili taş yoksa ve tıklanan beyazsa seç
+        if (isWhite) {
+            kare.classList.add("secili");
+            seciliKareId = kare.id;
+        }
+    }
+}
+
 // INI dosyası yükleme eventi
 document.getElementById('iniUpload').addEventListener('change', function(e) {
     const dosya = e.target.files[0];
@@ -625,6 +731,7 @@ document.getElementById('iniUpload').addEventListener('change', function(e) {
 
         if (varyant.startFen) {
             aktifFen = varyant.startFen;
+            siraKimde = 'w';
             document.getElementById("fen-metni").innerText = aktifFen;
             document.getElementById("fen-metni").removeAttribute("data-i18n");
             fenCiz(aktifFen, gridSatir, gridSutun);
@@ -813,11 +920,26 @@ function rotaVurgula(bestmove) {
     const kalkisKare = document.getElementById(`kare-${koordinatlar.kalkis.satir}-${koordinatlar.kalkis.sutun}`);
     const varisKare = document.getElementById(`kare-${koordinatlar.varis.satir}-${koordinatlar.varis.sutun}`);
 
-    if (kalkisKare) {
+    if (kalkisKare && varisKare) {
+        if (siraKimde === 'b') {
+            // Siyahın hamlesini uygula
+            const movingTas = kalkisKare.innerText;
+            varisKare.innerText = movingTas;
+            varisKare.className = kalkisKare.className; 
+            
+            kalkisKare.innerText = "";
+            kalkisKare.classList.remove("tas-W", "tas-B");
+        }
+
         kalkisKare.classList.add("rota-kalkis");
-    }
-    if (varisKare) {
         varisKare.classList.add("rota-varis");
+        
+        if (siraKimde === 'b') {
+            // Hamle yapıldıysa sırayı beyaza geçir ve FEN'i güncelle
+            aktifFen = tahtaToFen('w');
+            document.getElementById("fen-metni").textContent = aktifFen;
+            siraKimde = 'w';
+        }
     }
 
     // Bestmove alanına rota yönü göster
