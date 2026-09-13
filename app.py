@@ -71,7 +71,6 @@ def karar_al():
         if variants_ini_icerik:
             gecici_ini = os.path.join(VARIANTS_DIR, f"variants_{int(time.time()*1000)}.ini")
 
-            # String veya dict kontrolü
             if isinstance(variants_ini_icerik, dict):
                 section = varyant_adi or "wsn_gelismis_ag"
                 satirlar = [f"[{section}:chess]"]
@@ -83,7 +82,10 @@ def karar_al():
             else:
                 ini_metin = str(variants_ini_icerik)
 
-            with open(gecici_ini, 'w', encoding='utf-8') as f:
+            # CRITICAL FIX: Windows CRLF (\r\n) -> Linux LF (\n) normalization
+            ini_metin = ini_metin.replace('\r\n', '\n').replace('\r', '\n')
+
+            with open(gecici_ini, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(ini_metin)
             kullanilan_variants_path = gecici_ini
 
@@ -93,6 +95,10 @@ def karar_al():
                     if satir.startswith('[') and ':' in satir:
                         varyant_adi = satir.split('[')[1].split(':')[0].strip()
                         break
+
+        # Varyant adını temizle (whitespace / \r karakterlerini süz)
+        if varyant_adi:
+            varyant_adi = varyant_adi.strip()
 
         motor = subprocess.Popen(
             exe_yolu,
@@ -137,7 +143,7 @@ def karar_al():
         else:
             motor.stdin.write("position startpos\n")
 
-        motor.stdin.write("go depth 8\n")
+        motor.stdin.write("go depth 6\n")
         motor.stdin.flush()
 
         bestmove = None
