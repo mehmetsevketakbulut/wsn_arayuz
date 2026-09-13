@@ -226,6 +226,11 @@
         .kare.acik .coord-rank, .kare.acik .coord-file { color: #78909c; }
         .kare.koyu .coord-rank, .kare.koyu .coord-file { color: #cfd8dc; }
 
+        .tas-val {
+            font-size: 2.2em; /* Taşları büyüt */
+            line-height: 1;
+        }
+
         .tas-W { color: #fff; text-shadow: 1px 1px 2px #000; z-index: 2; }
         .tas-B { color: #1a1a1a; text-shadow: 1px 1px 2px #ffffff88; z-index: 2; }
 
@@ -625,6 +630,11 @@ function tahtaOlustur(satir = 8, sutun = 8) {
     }
 }
 
+const P_MAP = {
+    'K': '♔', 'Q': '♕', 'R': '♖', 'B': '♗', 'N': '♘', 'P': '♙',
+    'k': '♚', 'q': '♛', 'r': '♜', 'b': '♝', 'n': '♞', 'p': '♟'
+};
+
 function fenCiz(fenMetni, satir = 8, sutun = 8) {
     tahtaOlustur(satir, sutun);
 
@@ -654,7 +664,8 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
                 if (kare) {
                     const tasNode = document.createElement("span");
                     tasNode.className = "tas-val";
-                    tasNode.innerText = k;
+                    tasNode.dataset.tas = k; // Gerçek FEN harfini sakla
+                    tasNode.innerText = P_MAP[k] || k; // İkon göster
                     kare.appendChild(tasNode);
                     kare.classList.add(k === k.toUpperCase() ? "tas-W" : "tas-B");
                 }
@@ -668,7 +679,7 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
 function karedekiTasiAl(kare) {
     if (!kare) return "";
     const tasNode = kare.querySelector(".tas-val");
-    return tasNode ? tasNode.innerText.trim() : "";
+    return tasNode ? (tasNode.dataset.tas || "") : "";
 }
 
 function kareyeTasKoy(kare, tas) {
@@ -680,7 +691,8 @@ function kareyeTasKoy(kare, tas) {
     }
     if (tasNode) {
         if (tas) {
-            tasNode.innerText = tas;
+            tasNode.dataset.tas = tas;
+            tasNode.innerText = P_MAP[tas] || tas;
         } else {
             tasNode.remove();
         }
