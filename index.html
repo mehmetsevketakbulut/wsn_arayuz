@@ -633,7 +633,7 @@ function tahtaToFen(sira = 'w') {
         let satirString = "";
         for (let j = 0; j < sutun; j++) {
             const kare = document.getElementById(`kare-${i}-${j}`);
-            const tas = kare ? kare.innerText : "";
+            const tas = kare ? kare.textContent.trim() : "";
             
             if (tas) {
                 if (bosSayaci > 0) {
@@ -659,7 +659,7 @@ function kareTiklandi(event) {
     if (siraKimde !== 'w') return; // Sadece beyaz (kullanıcı) oynayabilir
 
     const kare = event.currentTarget;
-    const tas = kare.innerText;
+    const tas = kare.textContent.trim();
     const isWhite = tas && tas === tas.toUpperCase();
 
     if (seciliKareId) {
@@ -681,9 +681,13 @@ function kareTiklandi(event) {
         }
         
         // Hamleyi Uygula (seciliKare -> kare)
-        const movingTas = seciliKare.innerText;
-        kare.innerText = movingTas;
-        kare.className = seciliKare.className; // tas-W vs kopyala
+        const movingTas = seciliKare.textContent.trim();
+        kare.textContent = movingTas;
+        
+        // Sadece taş rengi sınıflarını taşı (acik/koyu arka planı bozma)
+        kare.classList.remove("tas-W", "tas-B");
+        if (seciliKare.classList.contains("tas-W")) kare.classList.add("tas-W");
+        if (seciliKare.classList.contains("tas-B")) kare.classList.add("tas-B");
         kare.classList.remove("secili");
         
         // Rota vurgusunu temizle (kullanıcı hamlesi de belli olsun)
@@ -693,7 +697,7 @@ function kareTiklandi(event) {
         kare.classList.add("rota-varis");
         seciliKare.classList.add("rota-kalkis");
 
-        seciliKare.innerText = "";
+        seciliKare.textContent = "";
         seciliKare.classList.remove("tas-W", "tas-B", "secili");
 
         seciliKareId = null;
@@ -923,11 +927,14 @@ function rotaVurgula(bestmove) {
     if (kalkisKare && varisKare) {
         if (siraKimde === 'b') {
             // Siyahın hamlesini uygula
-            const movingTas = kalkisKare.innerText;
-            varisKare.innerText = movingTas;
-            varisKare.className = kalkisKare.className; 
+            const movingTas = kalkisKare.textContent.trim();
+            varisKare.textContent = movingTas;
             
-            kalkisKare.innerText = "";
+            varisKare.classList.remove("tas-W", "tas-B");
+            if (kalkisKare.classList.contains("tas-W")) varisKare.classList.add("tas-W");
+            if (kalkisKare.classList.contains("tas-B")) varisKare.classList.add("tas-B");
+            
+            kalkisKare.textContent = "";
             kalkisKare.classList.remove("tas-W", "tas-B");
         }
 
