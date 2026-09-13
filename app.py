@@ -145,7 +145,7 @@ def karar_al():
         else:
             motor.stdin.write("position startpos\n")
 
-        motor.stdin.write("go depth 6\n")
+        motor.stdin.write("go depth 12\n")
         motor.stdin.flush()
 
         bestmove = None
