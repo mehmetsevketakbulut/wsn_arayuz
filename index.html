@@ -196,6 +196,7 @@
             aspect-ratio: 1;
             cursor: pointer;
             user-select: none;
+            position: relative;
         }
         .kare.acik { background-color: #cfd8dc; }
         .kare.koyu { background-color: #78909c; }
@@ -204,8 +205,29 @@
             box-shadow: inset 0 0 10px #ffffffaa;
             border-radius: 4px;
         }
-        .tas-W { color: #fff; text-shadow: 1px 1px 2px #000; }
-        .tas-B { color: #1a1a1a; text-shadow: 1px 1px 2px #ffffff88; }
+        
+        /* Satranç Koordinatları (a-b-c, 1-2-3) */
+        .coord-rank {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 9px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+        .coord-file {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 9px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+        .kare.acik .coord-rank, .kare.acik .coord-file { color: #78909c; }
+        .kare.koyu .coord-rank, .kare.koyu .coord-file { color: #cfd8dc; }
+
+        .tas-W { color: #fff; text-shadow: 1px 1px 2px #000; z-index: 2; }
+        .tas-B { color: #1a1a1a; text-shadow: 1px 1px 2px #ffffff88; z-index: 2; }
 
         /* --- INPUT --- */
         input[type="number"] {
@@ -572,6 +594,7 @@ function tahtaOlustur(satir = 8, sutun = 8) {
     grid.style.gridTemplateColumns = `repeat(${sutun}, minmax(28px, 45px))`;
     grid.style.gridTemplateRows = `repeat(${satir}, minmax(28px, 45px))`;
 
+    const harfler = "abcdefghijklmnopqrstuvwxyz";
     let acikKare = true;
     for (let s = 0; s < satir; s++) {
         for (let st = 0; st < sutun; st++) {
@@ -579,6 +602,22 @@ function tahtaOlustur(satir = 8, sutun = 8) {
             kare.className = "kare " + (acikKare ? "acik" : "koyu");
             kare.id = `kare-${s}-${st}`;
             kare.addEventListener('click', kareTiklandi);
+            
+            // Satır numarası (Sadece ilk sütunda)
+            if (st === 0) {
+                const spanR = document.createElement("span");
+                spanR.className = "coord-rank";
+                spanR.innerText = (satir - s);
+                kare.appendChild(spanR);
+            }
+            // Sütun harfi (Sadece son satırda)
+            if (s === satir - 1) {
+                const spanF = document.createElement("span");
+                spanF.className = "coord-file";
+                spanF.innerText = harfler[st];
+                kare.appendChild(spanF);
+            }
+            
             grid.appendChild(kare);
             acikKare = !acikKare;
         }
@@ -613,13 +652,38 @@ function fenCiz(fenMetni, satir = 8, sutun = 8) {
                 }
                 const kare = document.getElementById(`kare-${i}-${sutunIdx}`);
                 if (kare) {
-                    kare.innerText = k;
+                    const tasNode = document.createElement("span");
+                    tasNode.className = "tas-val";
+                    tasNode.innerText = k;
+                    kare.appendChild(tasNode);
                     kare.classList.add(k === k.toUpperCase() ? "tas-W" : "tas-B");
                 }
                 sutunIdx++;
             }
         }
         if (sayi) sutunIdx += parseInt(sayi);
+    }
+}
+
+function karedekiTasiAl(kare) {
+    if (!kare) return "";
+    const tasNode = kare.querySelector(".tas-val");
+    return tasNode ? tasNode.innerText.trim() : "";
+}
+
+function kareyeTasKoy(kare, tas) {
+    let tasNode = kare.querySelector(".tas-val");
+    if (!tasNode && tas) {
+        tasNode = document.createElement("span");
+        tasNode.className = "tas-val";
+        kare.appendChild(tasNode);
+    }
+    if (tasNode) {
+        if (tas) {
+            tasNode.innerText = tas;
+        } else {
+            tasNode.remove();
+        }
     }
 }
 
@@ -633,7 +697,7 @@ function tahtaToFen(sira = 'w') {
         let satirString = "";
         for (let j = 0; j < sutun; j++) {
             const kare = document.getElementById(`kare-${i}-${j}`);
-            const tas = kare ? kare.textContent.trim() : "";
+            const tas = karedekiTasiAl(kare);
             
             if (tas) {
                 if (bosSayaci > 0) {
@@ -714,7 +778,7 @@ function kareTiklandi(event) {
     if (siraKimde !== 'w') return; // Sadece beyaz (kullanıcı) oynayabilir
 
     const kare = event.currentTarget;
-    const tas = kare.textContent.trim();
+    const tas = karedekiTasiAl(kare);
     const isWhite = tas && tas === tas.toUpperCase();
 
     if (seciliKareId) {
@@ -753,8 +817,8 @@ function kareTiklandi(event) {
         }
         
         // Hamleyi Uygula (seciliKare -> kare)
-        const movingTas = seciliKare.textContent.trim();
-        kare.textContent = movingTas;
+        const movingTas = karedekiTasiAl(seciliKare);
+        kareyeTasKoy(kare, movingTas);
         
         // Sadece taş rengi sınıflarını taşı (acik/koyu arka planı bozma)
         kare.classList.remove("tas-W", "tas-B");
@@ -769,7 +833,7 @@ function kareTiklandi(event) {
         kare.classList.add("rota-varis");
         seciliKare.classList.add("rota-kalkis");
 
-        seciliKare.textContent = "";
+        kareyeTasKoy(seciliKare, "");
         seciliKare.classList.remove("tas-W", "tas-B", "secili");
 
         seciliKareId = null;
@@ -1000,14 +1064,14 @@ function rotaVurgula(bestmove) {
     if (kalkisKare && varisKare) {
         if (siraKimde === 'b') {
             // Siyahın hamlesini uygula
-            const movingTas = kalkisKare.textContent.trim();
-            varisKare.textContent = movingTas;
+            const movingTas = karedekiTasiAl(kalkisKare);
+            kareyeTasKoy(varisKare, movingTas);
             
             varisKare.classList.remove("tas-W", "tas-B");
             if (kalkisKare.classList.contains("tas-W")) varisKare.classList.add("tas-W");
             if (kalkisKare.classList.contains("tas-B")) varisKare.classList.add("tas-B");
             
-            kalkisKare.textContent = "";
+            kareyeTasKoy(kalkisKare, "");
             kalkisKare.classList.remove("tas-W", "tas-B");
         }
 
