@@ -339,6 +339,12 @@
                 <input type="file" id="iniUpload" accept=".ini">
             </div>
 
+            <!-- Predefined Templates -->
+            <div style="display: flex; gap: 8px; margin-top: 10px; margin-bottom: 12px;">
+                <button id="btn-klasik" class="btn" style="flex: 1; padding: 6px; font-size: 12px; background: #4CAF50;">Klasik Satranç</button>
+                <button id="btn-nizami" class="btn" style="flex: 1; padding: 6px; font-size: 12px; background: #ff9800;">Nizami (Şatranç)</button>
+            </div>
+
             <!-- Variant Badge -->
             <div style="margin-bottom: 12px;">
                 <span class="badge badge-warning" id="variant-badge" data-i18n="variant_not_loaded">Yüklenmedi</span>
@@ -867,6 +873,29 @@ function kareTiklandi(event) {
     }
 }
 
+function varyantUygula(icerik) {
+    aktifIniIcerik = icerik;
+    const varyant = iniParse(aktifIniIcerik);
+    if (!varyant) return;
+    aktifVariant = varyant;
+
+    gridSatir = varyant.maxRank || 8;
+    gridSutun = varyant.maxFile || 8;
+
+    if (varyant.startFen) {
+        aktifFen = varyant.startFen;
+        siraKimde = 'w';
+        document.getElementById("fen-metni").innerText = aktifFen;
+        document.getElementById("fen-metni").removeAttribute("data-i18n");
+        fenCiz(aktifFen, gridSatir, gridSutun);
+        yasalHamleleriGetir(); // İlk yasal hamleleri getir
+    } else {
+        document.getElementById("fen-metni").innerText = t("startfen_not_found");
+    }
+
+    varyantPanelGuncelle(varyant);
+}
+
 // INI dosyası yükleme eventi
 document.getElementById('iniUpload').addEventListener('change', function(e) {
     const dosya = e.target.files[0];
@@ -874,27 +903,28 @@ document.getElementById('iniUpload').addEventListener('change', function(e) {
 
     const okuyucu = new FileReader();
     okuyucu.onload = function(e) {
-        aktifIniIcerik = e.target.result;
-        const varyant = iniParse(aktifIniIcerik);
-        aktifVariant = varyant;
-
-        gridSatir = varyant.maxRank;
-        gridSutun = varyant.maxFile;
-
-        if (varyant.startFen) {
-            aktifFen = varyant.startFen;
-            siraKimde = 'w';
-            document.getElementById("fen-metni").innerText = aktifFen;
-            document.getElementById("fen-metni").removeAttribute("data-i18n");
-            fenCiz(aktifFen, gridSatir, gridSutun);
-            yasalHamleleriGetir(); // İlk yasal hamleleri getir
-        } else {
-            document.getElementById("fen-metni").innerText = t("startfen_not_found");
-        }
-
-        varyantPanelGuncelle(varyant);
+        varyantUygula(e.target.result);
     };
     okuyucu.readAsText(dosya);
+});
+
+// Hazır Şablonlar
+document.getElementById('btn-klasik').addEventListener('click', function() {
+    const klasikIni = `[chess]
+startFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+maxRank = 8
+maxFile = 8`;
+    varyantUygula(klasikIni);
+});
+
+document.getElementById('btn-nizami').addEventListener('click', function() {
+    const nizamiIni = `[nizami:shatranj]
+# Nizami'nin Oyunu - Tarihi Satranç Pozisyonu (9. yy)
+# 1. Kg6+ Şh8 2. Kf8+ Şh7 3. Kh6+ Şg7 4. Vf6+ Şxh6/Şxf8 5. Kh8# mat
+startFen = 6k1/5R2/7R/4N1Q1/8/1qn5/r2r4/2K5 w - - 0 1
+maxRank = 8
+maxFile = 8`;
+    varyantUygula(nizamiIni);
 });
 
 // =========================================================================
