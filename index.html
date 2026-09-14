@@ -764,7 +764,7 @@ async function yasalHamleleriGetir() {
     for (const url of endpoints) {
         try {
             const controller = new AbortController();
-            const tid = setTimeout(() => controller.abort(), 8000);
+            const tid = setTimeout(() => controller.abort(), 60000); // 60 saniye
             const resp = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -931,7 +931,7 @@ async function veriCek() {
     for (const url of endpoints) {
         try {
             const controller = new AbortController();
-            const tid = setTimeout(() => controller.abort(), 12000);
+            const tid = setTimeout(() => controller.abort(), 60000); // 60 saniye (Render uyanması için)
 
             const resp = await fetch(url, {
                 method: 'POST',
@@ -986,7 +986,7 @@ async function veriCek() {
     }
 
     if (!basarili) {
-        bestmoveEl.textContent = t("connection_error");
+        bestmoveEl.textContent = "Bağlantı Hatası: Sunucu uyanıyor olabilir, lütfen 30 sn bekleyip tekrar deneyin.";
         cpEl.textContent = t("error");
     }
 
