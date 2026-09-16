@@ -150,9 +150,18 @@ def karar_al():
 
         bestmove = None
         cp_skoru = None
+        full_pv = None
 
         while True:
             satir = motor.stdout.readline().strip()
+
+            if "pv" in satir.split():
+                parcalar = satir.split()
+                try:
+                    pv_indeksi = parcalar.index("pv")
+                    full_pv = " ".join(parcalar[pv_indeksi + 1:])
+                except ValueError:
+                    pass
 
             if "score cp" in satir:
                 parcalar = satir.split()
@@ -163,7 +172,8 @@ def karar_al():
                     pass
 
             if satir.startswith("bestmove"):
-                bestmove = satir.split()[1]
+                if len(satir.split()) > 1:
+                    bestmove = satir.split()[1]
                 break
 
         motor.terminate()
@@ -178,11 +188,12 @@ def karar_al():
         return jsonify({
             "gelen_veri": hamle_gecmisi,
             "fen": fen if fen else "startpos",
-            "varyant": varyant_adi if varyant_adi else "standart",
             "bestmove": bestmove,
+            "full_solution": full_pv,
             "cp_skoru": cp_skoru,
-            "gecikme_ms": gecen_sure,
-            "motor": "fairy-stockfish-largeboard"
+            "motor": os.path.basename(exe_yolu).split('.')[0],
+            "varyant": varyant_adi if varyant_adi else "standart",
+            "gecikme_ms": gecen_sure
         })
 
     except Exception as e:

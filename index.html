@@ -321,6 +321,7 @@
         <div class="header-controls">
             <div class="health-dot checking" id="health-dot" title=""></div>
             <span class="health-label" id="health-label" data-i18n="health_checking">Sunucu kontrol ediliyor...</span>
+            <button class="btn btn-primary" id="btn-tetikle" onclick="veriCek()" data-i18n="trigger_engine" style="padding: 4px 10px; margin-right: 10px; font-size: 12px; height: 30px;">Motoru Tetikle</button>
             <button class="lang-btn" id="lang-btn" onclick="dilDegistir()">EN</button>
         </div>
     </div>
@@ -339,10 +340,14 @@
                 <input type="file" id="iniUpload" accept=".ini">
             </div>
 
-            <!-- Predefined Templates -->
-            <div style="display: flex; gap: 8px; margin-top: 10px; margin-bottom: 12px;">
-                <button id="btn-klasik" class="btn" style="flex: 1; padding: 6px; font-size: 12px; background: #4CAF50;">Klasik Satranç</button>
-                <button id="btn-nizami" class="btn" style="flex: 1; padding: 6px; font-size: 12px; background: #ff9800;">Nizami (Şatranç)</button>
+            <!-- Predefined Templates Dropdown -->
+            <div style="margin-top: 10px; margin-bottom: 12px;">
+                <label style="font-size: 13px; color: #ccc;" data-i18n="select_variant">Varyant Seç:</label>
+                <select id="variant-dropdown" onchange="varyantDropdownDegisti()" style="width: 100%; background: #0d0d25; color: #fff; border: 1px solid #ffffff20; padding: 8px; border-radius: 6px; margin-top: 4px;">
+                    <option value="">-- Dosya Yüklenebilir --</option>
+                    <option value="klasik">Klasik Satranç</option>
+                    <option value="nizami">Nizami'nin Oyunu (Şatranç)</option>
+                </select>
             </div>
 
             <!-- Variant Badge -->
@@ -374,6 +379,12 @@
                 <div class="label" data-i18n="bestmove_label">API'den Gelen Rota (Bestmove)</div>
                 <div class="deger" id="bestmove" data-i18n="waiting">Bekleniyor...</div>
             </div>
+            
+            <div class="veri-kutusu">
+                <div class="label" data-i18n="full_solution_label">Tam Çözüm (PV)</div>
+                <div class="fen-text" id="full-solution" data-i18n="waiting" style="color: #4CAF50;">Bekleniyor...</div>
+            </div>
+
             <div class="veri-kutusu">
                 <div class="label" data-i18n="cp_label">Ham CP (Santipawn) Skoru</div>
                 <div class="deger" id="cp" data-i18n="waiting">Bekleniyor...</div>
@@ -384,8 +395,12 @@
                 <div class="label" data-i18n="variant_status">Varyant Durumu</div>
                 <div class="deger" id="motor-varyant" style="font-size:14px; color:#ff9800;">—</div>
             </div>
+            
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="veriCek('next')" data-i18n="btn_next_move">En İyi Sonraki Hamle</button>
+                <button class="btn btn-accent" style="flex: 1; background: #ff9800;" onclick="veriCek('full')" data-i18n="btn_full_solution">Tüm Çözümü Göster</button>
+            </div>
 
-            <button class="btn btn-primary" id="btn-tetikle" onclick="veriCek()" data-i18n="trigger_engine">Motoru Tetikle</button>
             <button class="btn-report" id="btn-rapor" onclick="raporIndir()">📄 Otonom Karar Raporunu İndir (.json)</button>
         </div>
 
@@ -908,43 +923,42 @@ document.getElementById('iniUpload').addEventListener('change', function(e) {
     okuyucu.readAsText(dosya);
 });
 
-// Hazır Şablonlar
-document.getElementById('btn-klasik').addEventListener('click', function() {
-    const klasikIni = `[chess]
-startFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-maxRank = 8
-maxFile = 8`;
-    varyantUygula(klasikIni);
-});
-
-document.getElementById('btn-nizami').addEventListener('click', function() {
-    const nizamiIni = `[nizami:shatranj]
-# Nizami'nin Oyunu - Tarihi Satranç Pozisyonu (9. yy)
-# 1. Kg6+ Şh8 2. Kf8+ Şh7 3. Kh6+ Şg7 4. Vf6+ Şxh6/Şxf8 5. Kh8# mat
-startFen = 6k1/5R2/7R/4N1Q1/8/1qn5/r2r4/2K5 w - - 0 1
-maxRank = 8
-maxFile = 8`;
-    varyantUygula(nizamiIni);
-});
+function varyantDropdownDegisti() {
+    const val = document.getElementById('variant-dropdown').value;
+    if (val === 'klasik') {
+        const klasikIni = `[chess]\nstartFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\nmaxRank = 8\nmaxFile = 8`;
+        varyantUygula(klasikIni);
+    } else if (val === 'nizami') {
+        const nizamiIni = `[nizami:shatranj]\n# Nizami'nin Oyunu (9. yy)\nstartFen = 6k1/5R2/7R/4N1Q1/8/1qn5/r2r4/2K5 w - - 0 1\nmaxRank = 8\nmaxFile = 8`;
+        varyantUygula(nizamiIni);
+    }
+}
 
 // =========================================================================
 // API VERİ ÇEKME — Varyant entegreli
 // =========================================================================
 let sonCpSkoru = 0;
 
-async function veriCek() {
+async function veriCek(type = 'next') {
     const btnTetikle = document.getElementById("btn-tetikle");
     const bestmoveEl = document.getElementById("bestmove");
+    const fullSolEl = document.getElementById("full-solution");
     const cpEl = document.getElementById("cp");
     const filtreEl = document.getElementById("filtre-sonuc");
 
-    btnTetikle.disabled = true;
+    if (btnTetikle) btnTetikle.disabled = true;
+    
     bestmoveEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
     bestmoveEl.removeAttribute("data-i18n");
     cpEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
     cpEl.removeAttribute("data-i18n");
     filtreEl.textContent = t("data_waiting");
     filtreEl.removeAttribute("data-i18n");
+
+    if (fullSolEl && type === 'full') {
+        fullSolEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
+        fullSolEl.removeAttribute("data-i18n");
+    }
 
     const payload = {};
     if (aktifFen) payload.fen = aktifFen;
@@ -978,16 +992,24 @@ async function veriCek() {
             if (data.hata) {
                 bestmoveEl.textContent = `${t("error")}: ${data.hata}`;
                 cpEl.textContent = t("error");
+                if (fullSolEl) fullSolEl.textContent = t("error");
             } else {
                 bestmoveEl.textContent = data.bestmove || t("error");
+                
+                if (fullSolEl && data.full_solution) {
+                    fullSolEl.textContent = data.full_solution;
+                } else if (fullSolEl) {
+                    fullSolEl.textContent = "-";
+                }
+
                 cpEl.textContent = data.cp_skoru !== null ? data.cp_skoru : "0";
                 sonCpSkoru = data.cp_skoru || 0;
 
                 const motorVaryant = document.getElementById("motor-varyant");
                 motorVaryant.textContent = `${data.varyant || "standart"} (${data.gecikme_ms}ms)`;
 
-                // Rota vurgulama
-                if (data.bestmove) {
+                // Rota vurgulama sadece 'next' için
+                if (data.bestmove && type === 'next') {
                     rotaVurgula(data.bestmove);
                 }
 
@@ -997,6 +1019,7 @@ async function veriCek() {
                     varyant: data.varyant || "standart",
                     fen: data.fen || "startpos",
                     bestmove: data.bestmove,
+                    full_solution: data.full_solution,
                     cp_skoru: data.cp_skoru,
                     gecikme_ms: data.gecikme_ms,
                     motor: data.motor,
@@ -1016,11 +1039,12 @@ async function veriCek() {
     }
 
     if (!basarili) {
-        bestmoveEl.textContent = "Bağlantı Hatası: Sunucu uyanıyor olabilir, lütfen 30 sn bekleyip tekrar deneyin.";
+        bestmoveEl.textContent = t("connection_error_timeout");
+        if (fullSolEl) fullSolEl.textContent = t("connection_error_timeout");
         cpEl.textContent = t("error");
     }
 
-    btnTetikle.disabled = false;
+    if (btnTetikle) btnTetikle.disabled = false;
 }
 
 // =========================================================================
