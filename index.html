@@ -340,13 +340,12 @@
                 <input type="file" id="iniUpload" accept=".ini">
             </div>
 
-            <!-- Predefined Templates Dropdown -->
             <div style="margin-top: 10px; margin-bottom: 12px;">
                 <label style="font-size: 13px; color: #ccc;" data-i18n="select_variant">Varyant Seç:</label>
                 <select id="variant-dropdown" onchange="varyantDropdownDegisti()" style="width: 100%; background: #0d0d25; color: #fff; border: 1px solid #ffffff20; padding: 8px; border-radius: 6px; margin-top: 4px;">
-                    <option value="">-- Dosya Yüklenebilir --</option>
-                    <option value="klasik">Klasik Satranç</option>
-                    <option value="nizami">Nizami'nin Oyunu (Şatranç)</option>
+                    <option value="" data-i18n="opt_upload">-- Dosya Yüklenebilir --</option>
+                    <option value="klasik" data-i18n="opt_classic">Klasik Satranç</option>
+                    <option value="nizami" data-i18n="opt_nizami">Nizami'nin Oyunu (Şatranç)</option>
                 </select>
             </div>
 

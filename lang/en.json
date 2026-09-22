@@ -47,5 +47,13 @@
   "active_variant_badge": "ACTIVE VARIANT",
   "no_variant_warning": "No variant loaded — engine will use default position.",
   "engine_result_title": "Engine Results",
-  "retry_info": "Retrying... ({n}/{max})"
+  "retry_info": "Retrying... ({n}/{max})",
+  "connection_error_timeout": "Connection Error: Server might be waking up, please wait 30s and try again.",
+  "btn_next_move": "Best Next Move",
+  "btn_full_solution": "Full Solution",
+  "select_variant": "Select Variant:",
+  "full_solution_label": "Full Solution (PV)",
+  "opt_upload": "-- File Upload Ready --",
+  "opt_classic": "Standard Chess",
+  "opt_nizami": "Nizami's Game (Shatranj)"
 }

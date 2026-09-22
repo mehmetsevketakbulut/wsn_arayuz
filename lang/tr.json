@@ -47,5 +47,13 @@
   "active_variant_badge": "AKTİF VARYANT",
   "no_variant_warning": "Varyant yüklenmedi — motor varsayılan pozisyonla çalışacak.",
   "engine_result_title": "Motor Sonuçları",
-  "retry_info": "Yeniden deneniyor... ({n}/{max})"
+  "retry_info": "Yeniden deneniyor... ({n}/{max})",
+  "connection_error_timeout": "Bağlantı Hatası: Sunucu uyanıyor olabilir, lütfen 30 sn bekleyip tekrar deneyin.",
+  "btn_next_move": "En İyi Sonraki Hamle",
+  "btn_full_solution": "Tüm Çözümü Göster",
+  "select_variant": "Varyant Seç:",
+  "full_solution_label": "Tam Çözüm (PV)",
+  "opt_upload": "-- Dosya Yüklenebilir --",
+  "opt_classic": "Klasik Satranç",
+  "opt_nizami": "Nizami'nin Oyunu (Şatranç)"
 }
