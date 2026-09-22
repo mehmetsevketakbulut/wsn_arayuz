@@ -494,6 +494,7 @@ async function healthCheck() {
         clearTimeout(tid);
         if (resp.ok) {
             dot.className = "health-dot ok";
+            label.setAttribute("data-i18n", "health_ok");
             label.textContent = t("health_ok");
             return;
         }
@@ -508,12 +509,16 @@ async function healthCheck() {
         clearTimeout(tid);
         if (resp.ok) {
             dot.className = "health-dot ok";
+            label.setAttribute("data-i18n", "health_ok");
             label.textContent = t("health_ok");
             return;
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn("Health check fallback failed", e);
+    }
 
     dot.className = "health-dot fail";
+    label.setAttribute("data-i18n", "health_fail");
     label.textContent = t("health_fail");
 }
 
@@ -1039,8 +1044,13 @@ async function veriCek(type = 'next') {
     }
 
     if (!basarili) {
+        bestmoveEl.setAttribute("data-i18n", "connection_error_timeout");
         bestmoveEl.textContent = t("connection_error_timeout");
-        if (fullSolEl) fullSolEl.textContent = t("connection_error_timeout");
+        if (fullSolEl) {
+            fullSolEl.setAttribute("data-i18n", "connection_error_timeout");
+            fullSolEl.textContent = t("connection_error_timeout");
+        }
+        cpEl.setAttribute("data-i18n", "error");
         cpEl.textContent = t("error");
     }
 
