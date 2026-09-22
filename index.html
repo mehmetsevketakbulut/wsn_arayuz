@@ -462,6 +462,11 @@ function dilUygula() {
     });
     // Dil butonu
     document.getElementById("lang-btn").textContent = dilVerisi["lang_switch"] || (mevcutDil === "tr" ? "EN" : "TR");
+    
+    // Aktif varyant varsa paneli yeniden çiz (badge + tablo dinamik t() çağrıları)
+    if (typeof aktifVariant !== 'undefined' && aktifVariant) {
+        varyantPanelGuncelle(aktifVariant);
+    }
 }
 
 function dilDegistir() {
