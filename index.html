@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -343,9 +343,12 @@
             <div style="margin-top: 10px; margin-bottom: 12px;">
                 <label style="font-size: 13px; color: #ccc;" data-i18n="select_variant">Varyant Seç:</label>
                 <select id="variant-dropdown" onchange="varyantDropdownDegisti()" style="width: 100%; background: #0d0d25; color: #fff; border: 1px solid #ffffff20; padding: 8px; border-radius: 6px; margin-top: 4px;">
-                    <option value="" data-i18n="opt_upload">-- Dosya Yüklenebilir --</option>
-                    <option value="klasik" data-i18n="opt_classic">Klasik Satranç</option>
-                    <option value="nizami" data-i18n="opt_nizami">Nizami'nin Oyunu (Şatranç)</option>
+                    <option value="" data-i18n="opt_upload">-- File Upload Ready --</option>
+                    <option value="klasik" data-i18n="opt_classic">Standard Chess</option>
+                    <option value="nizami" data-i18n="opt_nizami">Nizami's Game (Shatranj)</option>
+                    <option value="capablanca" data-i18n="opt_capablanca">Capablanca Chess (10x8)</option>
+                    <option value="crazyhouse" data-i18n="opt_crazyhouse">Crazyhouse (Node Injection)</option>
+                    <option value="xiangqi" data-i18n="opt_xiangqi">Xiangqi - Chinese Chess (10x9)</option>
                 </select>
             </div>
 
@@ -429,7 +432,7 @@ const API_BASE = window.location.hostname.includes("vercel.app")
 // =========================================================================
 // i18n SİSTEMİ — JSON dil dosyaları ile
 // =========================================================================
-let mevcutDil = localStorage.getItem("wsn_dil") || "tr";
+let mevcutDil = localStorage.getItem("wsn_dil") || "en";
 let dilVerisi = {};
 
 async function dilYukle(dil) {
@@ -935,11 +938,20 @@ document.getElementById('iniUpload').addEventListener('change', function(e) {
 function varyantDropdownDegisti() {
     const val = document.getElementById('variant-dropdown').value;
     if (val === 'klasik') {
-        const klasikIni = `[chess]\nstartFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\nmaxRank = 8\nmaxFile = 8`;
-        varyantUygula(klasikIni);
+        const ini = `[chess]\nstartFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\nmaxRank = 8\nmaxFile = 8`;
+        varyantUygula(ini);
     } else if (val === 'nizami') {
-        const nizamiIni = `[nizami:shatranj]\n# Nizami'nin Oyunu (9. yy)\nstartFen = 6k1/5R2/7R/4N1Q1/8/1qn5/r2r4/2K5 w - - 0 1\nmaxRank = 8\nmaxFile = 8`;
-        varyantUygula(nizamiIni);
+        const ini = `[nizami:shatranj]\n# Nizami's Game (9th century)\nstartFen = 6k1/5R2/7R/4N1Q1/8/1qn5/r2r4/2K5 w - - 0 1\nmaxRank = 8\nmaxFile = 8`;
+        varyantUygula(ini);
+    } else if (val === 'capablanca') {
+        const ini = `[capablanca:capablanca]\n# Capablanca Chess - 10x8 Extended Grid\nstartFen = rnabqkbcnr/pppppppppp/10/10/10/10/PPPPPPPPPP/RNABQKBCNR w KQkq - 0 1\nmaxRank = 8\nmaxFile = 10`;
+        varyantUygula(ini);
+    } else if (val === 'crazyhouse') {
+        const ini = `[crazyhouse:crazyhouse]\n# Crazyhouse - Captured pieces can be dropped back\nstartFen = rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR[] w KQkq - 0 1\nmaxRank = 8\nmaxFile = 8\ndrop = true`;
+        varyantUygula(ini);
+    } else if (val === 'xiangqi') {
+        const ini = `[xiangqi:xiangqi]\n# Xiangqi - Chinese Chess 10x9\nstartFen = rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1\nmaxRank = 10\nmaxFile = 9`;
+        varyantUygula(ini);
     }
 }
 

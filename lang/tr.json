@@ -63,5 +63,8 @@
   "report_route_approved": "Rota güvenilir bulundu, iletişim onaylandı.",
   "report_route_rejected": "Rota güvenilirlik eşiğinin altında, iletişim reddedildi.",
   "filter_approved": "ONAYLANDI",
-  "filter_denied": "REDDEDİLDİ"
+  "filter_denied": "REDDEDİLDİ",
+  "opt_capablanca": "Capablanca Satrancı (10x8)",
+  "opt_crazyhouse": "Crazyhouse (Düğüm Enjeksiyonu)",
+  "opt_xiangqi": "Xiangqi - Çin Satrancı (10x9)"
 }

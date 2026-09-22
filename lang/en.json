@@ -63,5 +63,8 @@
   "report_route_approved": "Route deemed reliable, communication approved.",
   "report_route_rejected": "Route below reliability threshold, communication rejected.",
   "filter_approved": "APPROVED",
-  "filter_denied": "REJECTED"
+  "filter_denied": "REJECTED",
+  "opt_capablanca": "Capablanca Chess (10x8)",
+  "opt_crazyhouse": "Crazyhouse (Node Injection)",
+  "opt_xiangqi": "Xiangqi - Chinese Chess (10x9)"
 }
