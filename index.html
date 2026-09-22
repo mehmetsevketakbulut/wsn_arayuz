@@ -317,7 +317,7 @@
 
     <!-- === HEADER === -->
     <div class="header">
-        <h1>🛰️ WSN Otonom Karar Sistemi</h1>
+        <h1 data-i18n="header_title">🛰️ WSN Otonom Karar Sistemi</h1>
         <div class="header-controls">
             <div class="health-dot checking" id="health-dot" title=""></div>
             <span class="health-label" id="health-label" data-i18n="health_checking">Sunucu kontrol ediliyor...</span>
@@ -400,7 +400,7 @@
                 <button class="btn btn-accent" style="flex: 1; background: #ff9800;" onclick="veriCek('full')" data-i18n="btn_full_solution">Tüm Çözümü Göster</button>
             </div>
 
-            <button class="btn-report" id="btn-rapor" onclick="raporIndir()">📄 Otonom Karar Raporunu İndir (.json)</button>
+            <button class="btn-report" id="btn-rapor" onclick="raporIndir()" data-i18n="btn_download_report">📄 Otonom Karar Raporunu İndir (.json)</button>
         </div>
 
         <!-- ======================== PANEL 3: FİLTRE ======================== -->
@@ -604,7 +604,7 @@ function varyantPanelGuncelle(varyant) {
         <tr><td data-i18n="grid_size">${t("grid_size")}</td><td>${varyant.maxRank} × ${varyant.maxFile}</td></tr>
         <tr><td data-i18n="topology">${t("topology")}</td><td>${varyant.cylinder ? t("topology_closed") : t("topology_open")}</td></tr>
         <tr><td data-i18n="node_injection">${t("node_injection")}</td><td>${varyant.drop ? t("enabled") : t("disabled")}</td></tr>
-        <tr><td data-i18n="custom_pieces">${t("custom_pieces")}</td><td>${varyant.customPieces.length} adet</td></tr>
+        <tr><td data-i18n="custom_pieces">${t("custom_pieces")}</td><td>${varyant.customPieces.length} ${t("unit_count")}</td></tr>
         ${varyant.promotionRegionWhite ? `<tr><td data-i18n="promotion_zone">${t("promotion_zone")}</td><td>${varyant.promotionRegionWhite}</td></tr>` : ''}
     `;
 }
@@ -1028,9 +1028,9 @@ async function veriCek(type = 'next') {
                     gecikme_ms: data.gecikme_ms,
                     motor: data.motor,
                     grid: aktifVariant ? `${aktifVariant.maxRank}x${aktifVariant.maxFile}` : "8x8",
-                    topoloji: aktifVariant && aktifVariant.cylinder ? "Kapalı Devre (Silindirik)" : "Açık",
+                    topoloji: aktifVariant && aktifVariant.cylinder ? t("topology_closed") : t("topology_open"),
                     filtre_esik: parseInt(document.getElementById("cp-esik").value),
-                    filtre_sonuc: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value) ? "ONAYLANDI" : "REDDEDİLDİ"
+                    filtre_sonuc: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value) ? t("filter_approved") : t("filter_denied")
                 };
                 document.getElementById("btn-rapor").classList.add("visible");
             }
@@ -1176,7 +1176,7 @@ function raporIndir() {
     if (!sonRaporVerisi) return;
 
     const rapor = {
-        baslik: "TÜBİTAK 1001 - WSN Otonom Karar Raporu",
+        baslik: t("report_title"),
         uretim_tarihi: sonRaporVerisi.tarih,
         sistem: {
             motor: sonRaporVerisi.motor,
@@ -1194,8 +1194,8 @@ function raporIndir() {
             esik_degeri: sonRaporVerisi.filtre_esik,
             karar: sonRaporVerisi.filtre_sonuc,
             aciklama: sonRaporVerisi.cp_skoru >= sonRaporVerisi.filtre_esik
-                ? "Rota güvenilir bulundu, iletişim onaylandı."
-                : "Rota güvenilirlik eşiğinin altında, iletişim reddedildi."
+                ? t("report_route_approved")
+                : t("report_route_rejected")
         }
     };
 
