@@ -1034,9 +1034,9 @@ async function veriCek(type = 'next') {
                     rotaVurgula(data.bestmove);
                 }
 
-                // Rapor verilerini sakla
+                // Rapor verilerini sakla (Tüm veriler ham halde saklanır, indirme anında dile göre şekillenir)
                 sonRaporVerisi = {
-                    tarih: new Date().toISOString(),
+                    tarih_obj: new Date(),
                     varyant: data.varyant || "standart",
                     fen: data.fen || "startpos",
                     bestmove: data.bestmove,
@@ -1044,10 +1044,9 @@ async function veriCek(type = 'next') {
                     cp_skoru: data.cp_skoru,
                     gecikme_ms: data.gecikme_ms,
                     motor: data.motor,
-                    grid: aktifVariant ? `${aktifVariant.maxRank}x${aktifVariant.maxFile}` : "8x8",
-                    topoloji: aktifVariant && aktifVariant.cylinder ? t("topology_closed") : t("topology_open"),
+                    aktif_varyant_obj: aktifVariant,
                     filtre_esik: parseInt(document.getElementById("cp-esik").value),
-                    filtre_sonuc: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value) ? t("filter_approved") : t("filter_denied")
+                    filtre_onay: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value)
                 };
                 document.getElementById("btn-rapor").classList.add("visible");
             }
@@ -1192,27 +1191,44 @@ function rotaVurgula(bestmove) {
 function raporIndir() {
     if (!sonRaporVerisi) return;
 
+    // Tarih formatı: yyyy_mm_dd_hh_mm
+    const d = sonRaporVerisi.tarih_obj;
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    const dateStr = `${yyyy}_${mm}_${dd}_${hh}_${min}`;
+
+    const v = sonRaporVerisi.aktif_varyant_obj;
+    
+    // JSON anahtarlarını ve değerlerini aktif dile göre oluştur
     const rapor = {
-        baslik: t("report_title"),
-        uretim_tarihi: sonRaporVerisi.tarih,
-        sistem: {
-            motor: sonRaporVerisi.motor,
-            varyant: sonRaporVerisi.varyant,
-            grid_boyutu: sonRaporVerisi.grid,
-            topoloji: sonRaporVerisi.topoloji
-        },
-        analiz: {
-            fen_dizilimi: sonRaporVerisi.fen,
-            en_iyi_rota: sonRaporVerisi.bestmove,
-            cp_skoru: sonRaporVerisi.cp_skoru,
-            hesaplama_suresi_ms: sonRaporVerisi.gecikme_ms
-        },
-        filtreleme: {
-            esik_degeri: sonRaporVerisi.filtre_esik,
-            karar: sonRaporVerisi.filtre_sonuc,
-            aciklama: sonRaporVerisi.cp_skoru >= sonRaporVerisi.filtre_esik
-                ? t("report_route_approved")
-                : t("report_route_rejected")
+        [t("report_title")]: {
+            [t("rep_date")]: dateStr,
+            [t("rep_sys")]: {
+                [t("rep_engine")]: sonRaporVerisi.motor,
+                [t("rep_var")]: sonRaporVerisi.varyant,
+                [t("rep_grid")]: v ? `${v.maxRank}x${v.maxFile}` : "8x8",
+                [t("rep_top")]: (v && v.cylinder) ? t("topology_closed") : t("topology_open")
+            },
+            [t("rep_var_params")]: {
+                [t("rep_node_inj")]: (v && v.drop) ? t("enabled") : t("disabled"),
+                [t("rep_custom_nodes")]: (v && v.customPieces.length > 0) ? v.customPieces.join(", ") : t("val_none"),
+                [t("rep_promo_zone")]: (v && v.promotionRegionWhite) ? v.promotionRegionWhite : t("val_none")
+            },
+            [t("rep_analysis")]: {
+                [t("rep_fen")]: sonRaporVerisi.fen,
+                [t("rep_best")]: sonRaporVerisi.bestmove,
+                [t("rep_full_sol")]: sonRaporVerisi.full_solution || "-",
+                [t("rep_cp")]: sonRaporVerisi.cp_skoru,
+                [t("rep_lat")]: sonRaporVerisi.gecikme_ms
+            },
+            [t("rep_filter")]: {
+                [t("rep_thresh")]: sonRaporVerisi.filtre_esik,
+                [t("rep_dec")]: sonRaporVerisi.filtre_onay ? t("filter_approved") : t("filter_denied"),
+                [t("rep_exp")]: sonRaporVerisi.filtre_onay ? t("report_route_approved") : t("report_route_rejected")
+            }
         }
     };
 
@@ -1220,7 +1236,7 @@ function raporIndir() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `wsn_karar_raporu_${Date.now()}.json`;
+    a.download = `wsn_decision_report_${dateStr}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
