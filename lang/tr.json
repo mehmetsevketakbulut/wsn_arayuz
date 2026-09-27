@@ -87,5 +87,6 @@
   "rep_thresh": "esik_degeri",
   "rep_dec": "karar",
   "rep_exp": "aciklama",
-  "val_none": "Yok"
+  "val_none": "Yok",
+  "btn_fetch_api": "🌐 Dış API'den Sensör Verisi Çek"
 }

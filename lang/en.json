@@ -87,5 +87,6 @@
   "rep_thresh": "threshold",
   "rep_dec": "decision",
   "rep_exp": "explanation",
-  "val_none": "None"
+  "val_none": "None",
+  "btn_fetch_api": "🌐 Fetch Sensor Data from External API"
 }

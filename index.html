@@ -359,7 +359,10 @@
 
             <!-- FEN -->
             <div class="veri-kutusu">
-                <div class="label" data-i18n="detected_fen">Algılanan FEN:</div>
+                <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span data-i18n="detected_fen">Algılanan FEN:</span>
+                    <button class="btn" onclick="apiFenCek()" style="padding: 4px 8px; font-size: 11px; background-color: #2196F3;" data-i18n="btn_fetch_api">🌐 API'den Rastgele Problem Çek</button>
+                </div>
                 <div class="fen-text" id="fen-metni" data-i18n="fen_none">Yok</div>
             </div>
 
@@ -952,6 +955,36 @@ function varyantDropdownDegisti() {
     } else if (val === 'xiangqi') {
         const ini = `[xiangqi:xiangqi]\n# Xiangqi - Chinese Chess 10x9\nstartFen = rnbakabnr/9/1c5c1/p1p1p1p1p/9/9/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1\nmaxRank = 10\nmaxFile = 9`;
         varyantUygula(ini);
+    }
+}
+
+// =========================================================================
+// DIŞ API'DEN FEN ÇEKME (EXTERNAL API INTEGRATION)
+// =========================================================================
+async function apiFenCek() {
+    try {
+        const url = (window.location.protocol === 'file:' || window.location.hostname === 'localhost') 
+            ? 'http://127.0.0.1:5000/api/external/random-puzzle'
+            : '/api/external/random-puzzle';
+            
+        document.getElementById("fen-metni").textContent = t("waiting") || "Veri çekiliyor...";
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success && data.fen) {
+            document.getElementById("variant-dropdown").value = "klasik";
+            const ini = `[chess]\nstartFen = ${data.fen}\nmaxRank = 8\nmaxFile = 8`;
+            varyantUygula(ini);
+            veriCek('full'); 
+        } else {
+            alert(t("error") || "API Hatası: Veri çekilemedi.");
+            document.getElementById("fen-metni").textContent = aktifFen || t("fen_none");
+        }
+    } catch (err) {
+        console.error("API Fetch Error:", err);
+        alert("Bağlantı Hatası! Backend kapalı olabilir.");
+        document.getElementById("fen-metni").textContent = aktifFen || t("fen_none");
     }
 }
 
