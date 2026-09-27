@@ -963,9 +963,7 @@ function varyantDropdownDegisti() {
 // =========================================================================
 async function apiFenCek() {
     try {
-        const url = (window.location.protocol === 'file:' || window.location.hostname === 'localhost') 
-            ? 'http://127.0.0.1:5000/api/external/random-puzzle'
-            : '/api/external/random-puzzle';
+        const url = `${API_BASE}/api/external/random-puzzle`;
             
         document.getElementById("fen-metni").textContent = t("waiting") || "Veri çekiliyor...";
         
