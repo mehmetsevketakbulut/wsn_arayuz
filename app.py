@@ -299,5 +299,19 @@ def legal_moves():
         return jsonify({"hata": str(e)}), 500
 
 
+@app.route('/api/external/random-puzzle', methods=['GET'])
+def external_random_puzzle():
+    import urllib.request
+    import json
+    try:
+        req = urllib.request.Request('https://api.chess.com/pub/puzzle/random', headers={'User-Agent': 'WSN-Decision-System'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            fen = data.get('fen')
+            title = data.get('title', 'Random Puzzle')
+            return jsonify({"success": True, "fen": fen, "title": title, "source": "Chess.com API"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
