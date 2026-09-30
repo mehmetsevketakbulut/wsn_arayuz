@@ -650,33 +650,42 @@ function gecmiseHamleEkle(yeniFen, hamleStr) {
     document.getElementById("game-nav").style.display = "block";
 }
 
+function navigasyonYukle(indeks) {
+    gecmisIndeks = indeks;
+    aktifFen = fenGecmisi[gecmisIndeks];
+    siraKimde = aktifFen.split(" ")[1] || 'w';
+    
+    // Seçim ve vurguları sıfırla
+    seciliKareId = null;
+    document.querySelectorAll(".secili, .rota-kalkis, .rota-varis").forEach(el => {
+        el.classList.remove("secili", "rota-kalkis", "rota-varis");
+    });
+    document.querySelectorAll(".rota-ok").forEach(el => el.remove());
+
+    document.getElementById("fen-metni").textContent = aktifFen;
+    fenCiz(aktifFen, gridSatir, gridSutun);
+    
+    // Sıra beyazdaysa yasal hamleleri yenile
+    if (siraKimde === 'w') {
+        yasalHamleleriGetir();
+    }
+}
+
 function basaDon() {
-    if (gecmisIndeks > 0 && fenGecmisi.length > 0) {
-        gecmisIndeks = 0;
-        aktifFen = fenGecmisi[gecmisIndeks];
-        siraKimde = aktifFen.split(" ")[1] || 'w';
-        document.getElementById("fen-metni").textContent = aktifFen;
-        fenCiz(aktifFen, gridSatir, gridSutun);
+    if (fenGecmisi.length > 0 && gecmisIndeks > 0) {
+        navigasyonYukle(0);
     }
 }
 
 function geriAl() {
     if (gecmisIndeks > 0) {
-        gecmisIndeks--;
-        aktifFen = fenGecmisi[gecmisIndeks];
-        siraKimde = aktifFen.split(" ")[1] || 'w';
-        document.getElementById("fen-metni").textContent = aktifFen;
-        fenCiz(aktifFen, gridSatir, gridSutun);
+        navigasyonYukle(gecmisIndeks - 1);
     }
 }
 
 function ileriAl() {
     if (gecmisIndeks < fenGecmisi.length - 1) {
-        gecmisIndeks++;
-        aktifFen = fenGecmisi[gecmisIndeks];
-        siraKimde = aktifFen.split(" ")[1] || 'w';
-        document.getElementById("fen-metni").textContent = aktifFen;
-        fenCiz(aktifFen, gridSatir, gridSutun);
+        navigasyonYukle(gecmisIndeks + 1);
     }
 }
 
