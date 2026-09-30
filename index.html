@@ -362,7 +362,7 @@
             <div class="veri-kutusu">
                 <div class="label" style="display: flex; justify-content: space-between; align-items: center;">
                     <span data-i18n="detected_fen">Algılanan FEN:</span>
-                    <button class="btn" onclick="apiFenCek()" style="padding: 4px 8px; font-size: 11px; background-color: #2196F3;" data-i18n="btn_fetch_api">🌐 API'den Rastgele Problem Çek</button>
+                    <button class="btn" onclick="apiFenCek()" style="padding: 4px 8px; font-size: 11px; background-color: #2196F3;" data-i18n="btn_fetch_api">🌐 Fetch Sensor Data from External API</button>
                 </div>
                 <div class="fen-text" id="fen-metni" data-i18n="fen_none">Yok</div>
             </div>
@@ -656,7 +656,7 @@ function basaDon() {
         aktifFen = fenGecmisi[gecmisIndeks];
         siraKimde = aktifFen.split(" ")[1] || 'w';
         document.getElementById("fen-metni").textContent = aktifFen;
-        tahtayiCiz(aktifFen);
+        fenCiz(aktifFen, gridSatir, gridSutun);
     }
 }
 
@@ -666,7 +666,7 @@ function geriAl() {
         aktifFen = fenGecmisi[gecmisIndeks];
         siraKimde = aktifFen.split(" ")[1] || 'w';
         document.getElementById("fen-metni").textContent = aktifFen;
-        tahtayiCiz(aktifFen);
+        fenCiz(aktifFen, gridSatir, gridSutun);
     }
 }
 
@@ -676,7 +676,7 @@ function ileriAl() {
         aktifFen = fenGecmisi[gecmisIndeks];
         siraKimde = aktifFen.split(" ")[1] || 'w';
         document.getElementById("fen-metni").textContent = aktifFen;
-        tahtayiCiz(aktifFen);
+        fenCiz(aktifFen, gridSatir, gridSutun);
     }
 }
 
@@ -1048,7 +1048,7 @@ async function apiFenCek() {
         }
     } catch (err) {
         console.error("API Fetch Error:", err);
-        alert("Bağlantı Hatası! Backend kapalı olabilir.");
+        alert(t("connection_error") || "Connection Error! Backend may be offline.");
         document.getElementById("fen-metni").textContent = aktifFen || t("fen_none");
     }
 }
@@ -1353,42 +1353,73 @@ function raporIndir() {
 
 function pdfRaporIndir() {
     if (!sonRaporVerisi || !window.jspdf) {
-        alert("PDF kütüphanesi yüklenemedi veya rapor verisi yok.");
+        alert("PDF / Report data not available.");
         return;
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
-    // Tarih formatı: yyyy_mm_dd_hh_mm
     const d = sonRaporVerisi.tarih_obj;
     const dateStr = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, '0')}_${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}_${String(d.getMinutes()).padStart(2, '0')}`;
+    const v = sonRaporVerisi.aktif_varyant_obj;
 
-    doc.setFont("helvetica");
+    // jsPDF helvetica does not support Turkish chars (ö,ü,ş,ç,ı,ğ).
+    // Use ASCII-safe labels so PDF renders cleanly in both languages.
+    const isTR = mevcutDil === 'tr';
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.text("WSN Otonom Karar Raporu", 20, 20);
+    doc.text("WSN Decision Report", 20, 20);
     
-    doc.setFontSize(12);
-    let y = 35;
-    
-    const lines = [
-        `Tarih: ${d.toLocaleString()}`,
-        `Motor: ${sonRaporVerisi.motor}`,
-        `Varyant (Ag Topolojisi): ${sonRaporVerisi.varyant}`,
-        `Baslangic FEN: ${sonRaporVerisi.fen}`,
-        `Oynanan Hamleler: ${hamleGecmisiListesi.join(", ") || "Yok"}`,
-        `Otonom Rota (Bestmove): ${sonRaporVerisi.bestmove}`,
-        `Tam Cozum (PV): ${sonRaporVerisi.full_solution || "-"}`,
-        `Gecikme (Latency): ${sonRaporVerisi.gecikme_ms} ms`,
-        `CP Skoru: ${sonRaporVerisi.cp_skoru}`,
-        `Filtre Karari: ${sonRaporVerisi.filtre_onay ? "ONAYLANDI" : "REDDEDILDI"} (Esik: ${sonRaporVerisi.filtre_esik})`
-    ];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Generated: ${d.toLocaleString()}  |  Version: ${dateStr}`, 20, 28);
 
-    lines.forEach(line => {
-        // PV çok uzun olabilir, böl
-        const splitText = doc.splitTextToSize(line, 170);
+    doc.setDrawColor(0, 210, 255);
+    doc.line(20, 32, 190, 32);
+
+    doc.setFontSize(12);
+    let y = 42;
+
+    function addSection(title) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(13);
+        doc.text(title, 20, y);
+        y += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+    }
+
+    function addLine(label, value) {
+        const text = `${label}: ${value}`;
+        const splitText = doc.splitTextToSize(text, 170);
         doc.text(splitText, 20, y);
-        y += 8 * splitText.length;
-    });
+        y += 7 * splitText.length;
+    }
+
+    // Section 1: System
+    addSection(isTR ? "Sistem Bilgileri" : "System Information");
+    addLine(isTR ? "Motor" : "Engine", sonRaporVerisi.motor);
+    addLine(isTR ? "Varyant" : "Variant", sonRaporVerisi.varyant);
+    addLine(isTR ? "Grid Boyutu" : "Grid Size", v ? `${v.maxRank}x${v.maxFile}` : "8x8");
+    addLine(isTR ? "Topoloji" : "Topology", (v && v.cylinder) ? "Closed (Cylinder)" : "Open (Flat)");
+    addLine(isTR ? "Drop (Enjeksiyon)" : "Node Injection (Drop)", (v && v.drop) ? "Enabled" : "Disabled");
+    y += 4;
+
+    // Section 2: Analysis
+    addSection(isTR ? "Analiz Sonuclari" : "Analysis Results");
+    addLine("FEN", sonRaporVerisi.fen);
+    addLine(isTR ? "Oynanan Hamleler" : "Played Moves", hamleGecmisiListesi.join(", ") || "-");
+    addLine(isTR ? "En Iyi Rota (Bestmove)" : "Best Route (Bestmove)", sonRaporVerisi.bestmove);
+    addLine(isTR ? "Tam Cozum (PV)" : "Full Solution (PV)", sonRaporVerisi.full_solution || "-");
+    addLine("CP Score", String(sonRaporVerisi.cp_skoru));
+    addLine(isTR ? "Gecikme (Latency)" : "Latency", `${sonRaporVerisi.gecikme_ms} ms`);
+    y += 4;
+
+    // Section 3: Filter
+    addSection(isTR ? "Filtre Karari" : "Filter Decision");
+    addLine(isTR ? "Esik Degeri" : "Threshold", String(sonRaporVerisi.filtre_esik));
+    addLine(isTR ? "Karar" : "Decision", sonRaporVerisi.filtre_onay ? (isTR ? "ONAYLANDI" : "APPROVED") : (isTR ? "REDDEDILDI" : "REJECTED"));
 
     doc.save(`wsn_decision_report_${dateStr}.pdf`);
 }
