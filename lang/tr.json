@@ -88,5 +88,10 @@
   "rep_dec": "karar",
   "rep_exp": "aciklama",
   "val_none": "Yok",
-  "btn_fetch_api": "🌐 Dış API'den Sensör Verisi Çek"
+  "btn_fetch_api": "🌐 Dış API'den Sensör Verisi Çek",
+  "btn_start": "|◀ Başa Dön",
+  "btn_back": "◀ Geri",
+  "btn_forward": "İleri ▶",
+  "btn_pdf": "📄 PDF İndir",
+  "moves": "Oynanan Hamleler"
 }

@@ -88,5 +88,10 @@
   "rep_dec": "decision",
   "rep_exp": "explanation",
   "val_none": "None",
-  "btn_fetch_api": "🌐 Fetch Sensor Data from External API"
+  "btn_fetch_api": "🌐 Fetch Sensor Data from External API",
+  "btn_start": "|◀ Start",
+  "btn_back": "◀ Back",
+  "btn_forward": "Forward ▶",
+  "btn_pdf": "📄 Download PDF",
+  "moves": "Played Moves"
 }

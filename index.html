@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="page_title">WSN Otonom Karar & Filtreleme Paneli</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -374,6 +375,13 @@
 
             <!-- WSN Grid -->
             <div id="wsn-grid"></div>
+
+            <!-- Oyun Geçmişi Navigasyon -->
+            <div id="game-nav" style="text-align: center; margin-top: 15px; display: none;">
+                <button class="btn" style="background: #333; font-size: 11px; padding: 6px 10px;" onclick="basaDon()" data-i18n="btn_start">|◀ Başa Dön</button>
+                <button class="btn" style="background: #555; font-size: 11px; padding: 6px 10px;" onclick="geriAl()" data-i18n="btn_back">◀ Geri</button>
+                <button class="btn" style="background: #555; font-size: 11px; padding: 6px 10px;" onclick="ileriAl()" data-i18n="btn_forward">İleri ▶</button>
+            </div>
         </div>
 
         <!-- ======================== PANEL 2: MOTOR ======================== -->
@@ -407,6 +415,7 @@
             </div>
 
             <button class="btn-report" id="btn-rapor" onclick="raporIndir()" data-i18n="btn_download_report">📄 Otonom Karar Raporunu İndir (.json)</button>
+            <button class="btn-report" id="btn-rapor-pdf" onclick="pdfRaporIndir()" style="background-color: #f44336; margin-top: 10px; display: none;" data-i18n="btn_pdf">📄 PDF İndir</button>
         </div>
 
         <!-- ======================== PANEL 3: FİLTRE ======================== -->
@@ -621,10 +630,55 @@ function varyantPanelGuncelle(varyant) {
 }
 
 // =========================================================================
-// OYUN DURUMU (STATE)
+// OYUN DURUMU (STATE) VE GEÇMİŞ
 // =========================================================================
 let seciliKareId = null;
 let siraKimde = 'w'; // 'w' = Kullanıcı(Beyaz), 'b' = Motor(Siyah)
+
+let fenGecmisi = [];
+let hamleGecmisiListesi = [];
+let gecmisIndeks = -1;
+
+function gecmiseHamleEkle(yeniFen, hamleStr) {
+    if (gecmisIndeks < fenGecmisi.length - 1) {
+        fenGecmisi = fenGecmisi.slice(0, gecmisIndeks + 1);
+        hamleGecmisiListesi = hamleGecmisiListesi.slice(0, gecmisIndeks);
+    }
+    fenGecmisi.push(yeniFen);
+    hamleGecmisiListesi.push(hamleStr);
+    gecmisIndeks++;
+    document.getElementById("game-nav").style.display = "block";
+}
+
+function basaDon() {
+    if (gecmisIndeks > 0 && fenGecmisi.length > 0) {
+        gecmisIndeks = 0;
+        aktifFen = fenGecmisi[gecmisIndeks];
+        siraKimde = aktifFen.split(" ")[1] || 'w';
+        document.getElementById("fen-metni").textContent = aktifFen;
+        tahtayiCiz(aktifFen);
+    }
+}
+
+function geriAl() {
+    if (gecmisIndeks > 0) {
+        gecmisIndeks--;
+        aktifFen = fenGecmisi[gecmisIndeks];
+        siraKimde = aktifFen.split(" ")[1] || 'w';
+        document.getElementById("fen-metni").textContent = aktifFen;
+        tahtayiCiz(aktifFen);
+    }
+}
+
+function ileriAl() {
+    if (gecmisIndeks < fenGecmisi.length - 1) {
+        gecmisIndeks++;
+        aktifFen = fenGecmisi[gecmisIndeks];
+        siraKimde = aktifFen.split(" ")[1] || 'w';
+        document.getElementById("fen-metni").textContent = aktifFen;
+        tahtayiCiz(aktifFen);
+    }
+}
 
 // =========================================================================
 // TAHTA ÇİZİMİ (DİNAMİK GRID)
@@ -881,6 +935,8 @@ function kareTiklandi(event) {
         kare.classList.add("rota-varis");
         seciliKare.classList.add("rota-kalkis");
 
+        const secilenHamleStr = koordinatToHamle(seciliKareId, kare.id);
+
         kareyeTasKoy(seciliKare, "");
         seciliKare.classList.remove("tas-W", "tas-B", "secili");
 
@@ -890,6 +946,9 @@ function kareTiklandi(event) {
         // Yeni FEN üret ve motora gönder
         aktifFen = tahtaToFen('b');
         document.getElementById("fen-metni").textContent = aktifFen;
+        
+        // Hamleyi geçmişe ekle
+        gecmiseHamleEkle(aktifFen, secilenHamleStr);
         
         // Otomatik motoru tetikle
         veriCek();
@@ -915,10 +974,18 @@ function varyantUygula(icerik) {
     if (varyant.startFen) {
         aktifFen = varyant.startFen;
         siraKimde = 'w';
+        
+        // Geçmişi sıfırla
+        fenGecmisi = [aktifFen];
+        hamleGecmisiListesi = [];
+        gecmisIndeks = 0;
+        const nav = document.getElementById("game-nav");
+        if(nav) nav.style.display = "block";
+
         document.getElementById("fen-metni").innerText = aktifFen;
         document.getElementById("fen-metni").removeAttribute("data-i18n");
         fenCiz(aktifFen, gridSatir, gridSutun);
-        yasalHamleleriGetir(); // İlk yasal hamleleri getir
+        yasalHamleleriGetir();
     } else {
         document.getElementById("fen-metni").innerText = t("startfen_not_found");
     }
@@ -1080,6 +1147,11 @@ async function veriCek(type = 'next') {
                     filtre_onay: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value)
                 };
                 document.getElementById("btn-rapor").classList.add("visible");
+                const pdfBtn = document.getElementById("btn-rapor-pdf");
+                if(pdfBtn) {
+                    pdfBtn.style.display = "block";
+                    pdfBtn.classList.add("visible");
+                }
             }
 
             basarili = true;
@@ -1205,6 +1277,10 @@ function rotaVurgula(bestmove) {
             aktifFen = tahtaToFen('w');
             document.getElementById("fen-metni").textContent = aktifFen;
             siraKimde = 'w';
+            
+            // Hamleyi geçmişe ekle
+            gecmiseHamleEkle(aktifFen, bestmove);
+            
             yasalHamleleriGetir(); // Beyazın yasal hamlelerini hazırla
         }
     }
@@ -1250,6 +1326,7 @@ function raporIndir() {
             },
             [t("rep_analysis")]: {
                 [t("rep_fen")]: sonRaporVerisi.fen,
+                [t("moves")]: hamleGecmisiListesi.join(", ") || t("val_none"),
                 [t("rep_best")]: sonRaporVerisi.bestmove,
                 [t("rep_full_sol")]: sonRaporVerisi.full_solution || "-",
                 [t("rep_cp")]: sonRaporVerisi.cp_skoru,
@@ -1272,6 +1349,48 @@ function raporIndir() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+function pdfRaporIndir() {
+    if (!sonRaporVerisi || !window.jspdf) {
+        alert("PDF kütüphanesi yüklenemedi veya rapor verisi yok.");
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Tarih formatı: yyyy_mm_dd_hh_mm
+    const d = sonRaporVerisi.tarih_obj;
+    const dateStr = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, '0')}_${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}_${String(d.getMinutes()).padStart(2, '0')}`;
+
+    doc.setFont("helvetica");
+    doc.setFontSize(16);
+    doc.text("WSN Otonom Karar Raporu", 20, 20);
+    
+    doc.setFontSize(12);
+    let y = 35;
+    
+    const lines = [
+        `Tarih: ${d.toLocaleString()}`,
+        `Motor: ${sonRaporVerisi.motor}`,
+        `Varyant (Ag Topolojisi): ${sonRaporVerisi.varyant}`,
+        `Baslangic FEN: ${sonRaporVerisi.fen}`,
+        `Oynanan Hamleler: ${hamleGecmisiListesi.join(", ") || "Yok"}`,
+        `Otonom Rota (Bestmove): ${sonRaporVerisi.bestmove}`,
+        `Tam Cozum (PV): ${sonRaporVerisi.full_solution || "-"}`,
+        `Gecikme (Latency): ${sonRaporVerisi.gecikme_ms} ms`,
+        `CP Skoru: ${sonRaporVerisi.cp_skoru}`,
+        `Filtre Karari: ${sonRaporVerisi.filtre_onay ? "ONAYLANDI" : "REDDEDILDI"} (Esik: ${sonRaporVerisi.filtre_esik})`
+    ];
+
+    lines.forEach(line => {
+        // PV çok uzun olabilir, böl
+        const splitText = doc.splitTextToSize(line, 170);
+        doc.text(splitText, 20, y);
+        y += 8 * splitText.length;
+    });
+
+    doc.save(`wsn_decision_report_${dateStr}.pdf`);
 }
 
 // =========================================================================
