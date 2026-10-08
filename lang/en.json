@@ -93,5 +93,6 @@
   "btn_back": "◀ Back",
   "btn_forward": "Forward ▶",
   "btn_pdf": "📄 Download PDF",
-  "moves": "Played Moves"
+  "moves": "Played Moves",
+  "engine_depth": "Search Depth (Depth):"
 }

@@ -145,7 +145,13 @@ def karar_al():
         else:
             motor.stdin.write("position startpos\n")
 
-        motor.stdin.write("go depth 12\n")
+        derinlik = veri.get('derinlik', 12)
+        try:
+            derinlik = int(derinlik)
+        except ValueError:
+            derinlik = 12
+
+        motor.stdin.write(f"go depth {derinlik}\n")
         motor.stdin.flush()
 
         bestmove = None

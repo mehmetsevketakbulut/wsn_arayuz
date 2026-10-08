@@ -408,6 +408,15 @@
                 <div class="label" data-i18n="variant_status">Varyant Durumu</div>
                 <div class="deger" id="motor-varyant" style="font-size:14px; color:#ff9800;">—</div>
             </div>
+
+            <!-- Depth Slider -->
+            <div class="veri-kutusu" style="border-left-color: #2196F3; margin-bottom: 15px;">
+                <div class="label" style="display: flex; justify-content: space-between;">
+                    <span data-i18n="engine_depth">Arama Derinliği (Depth):</span>
+                    <span id="depth-val" style="color: white; font-weight: bold;">12</span>
+                </div>
+                <input type="range" id="engine-depth" min="1" max="25" value="12" style="width: 100%; margin-top: 8px;" oninput="document.getElementById('depth-val').textContent = this.value">
+            </div>
             
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                 <button class="btn btn-primary" style="flex: 1;" onclick="veriCek('next')" data-i18n="btn_next_move">En İyi Sonraki Hamle</button>
@@ -1092,6 +1101,8 @@ async function veriCek(type = 'next') {
     if (aktifFen) payload.fen = aktifFen;
     if (aktifVariant && aktifVariant.varyantAdi) payload.varyant_adi = aktifVariant.varyantAdi;
     if (aktifIniIcerik) payload.variants_ini = aktifIniIcerik;
+    const engineDepthEl = document.getElementById("engine-depth");
+    if (engineDepthEl) payload.derinlik = engineDepthEl.value;
 
     const endpoints = [
         `${API_BASE}/api/karar`,
@@ -1151,6 +1162,7 @@ async function veriCek(type = 'next') {
                     cp_skoru: data.cp_skoru,
                     gecikme_ms: data.gecikme_ms,
                     motor: data.motor,
+                    derinlik: engineDepthEl ? parseInt(engineDepthEl.value) : 12,
                     aktif_varyant_obj: aktifVariant,
                     filtre_esik: parseInt(document.getElementById("cp-esik").value),
                     filtre_onay: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value)
@@ -1324,6 +1336,7 @@ function raporIndir() {
             [t("rep_date")]: dateStr,
             [t("rep_sys")]: {
                 [t("rep_engine")]: sonRaporVerisi.motor,
+                [t("engine_depth")]: sonRaporVerisi.derinlik,
                 [t("rep_var")]: sonRaporVerisi.varyant,
                 [t("rep_grid")]: v ? `${v.maxRank}x${v.maxFile}` : "8x8",
                 [t("rep_top")]: (v && v.cylinder) ? t("topology_closed") : t("topology_open")
@@ -1419,6 +1432,7 @@ function pdfRaporIndir() {
     yL += 3;
 
     yL = addLine(isTR ? "Motor" : "Engine", sonRaporVerisi.motor, 18, yL, 78);
+    yL = addLine(isTR ? "Derinlik (Depth)" : "Search Depth", String(sonRaporVerisi.derinlik), 18, yL, 78);
     yL = addLine(isTR ? "Varyant" : "Variant", sonRaporVerisi.varyant, 18, yL, 78);
     yL = addLine(isTR ? "Grid Boyutu" : "Grid Size", v ? `${v.maxRank}x${v.maxFile}` : "8x8", 18, yL, 78);
     yL = addLine(isTR ? "Topoloji" : "Topology", (v && v.cylinder) ? "Closed (Cylinder)" : "Open (Flat)", 18, yL, 78);

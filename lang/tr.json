@@ -93,5 +93,6 @@
   "btn_back": "◀ Geri",
   "btn_forward": "İleri ▶",
   "btn_pdf": "📄 PDF İndir",
-  "moves": "Oynanan Hamleler"
+  "moves": "Oynanan Hamleler",
+  "engine_depth": "Arama Derinliği (Depth):"
 }
