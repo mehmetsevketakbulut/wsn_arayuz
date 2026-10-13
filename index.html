@@ -423,6 +423,8 @@
                 <button class="btn btn-accent" style="flex: 1; background: #ff9800;" onclick="veriCek('full')" data-i18n="btn_full_solution">Tüm Çözümü Göster</button>
             </div>
 
+            <button class="btn" id="btn-oto-sim" style="background: linear-gradient(135deg, #00c853, #64dd17); color: #000; font-weight: bold; margin-top: 0; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,200,83,0.3);" onclick="otonomSimulasyonToggle()" data-i18n="btn_auto_sim">▶ Otonom Simülasyon (Canlı Demo)</button>
+
             <button class="btn-report" id="btn-rapor" onclick="raporIndir()" data-i18n="btn_download_report">📄 Otonom Karar Raporunu İndir (.json)</button>
             <button class="btn-report" id="btn-rapor-pdf" onclick="pdfRaporIndir()" style="background-color: #f44336; margin-top: 10px; display: none;" data-i18n="btn_pdf">📄 PDF İndir</button>
         </div>
@@ -487,6 +489,12 @@ function dilUygula() {
     // Dil butonu
     document.getElementById("lang-btn").textContent = dilVerisi["lang_switch"] || (mevcutDil === "tr" ? "EN" : "TR");
     
+    // Simülasyon butonu metnini koru
+    const btnSim = document.getElementById("btn-oto-sim");
+    if (btnSim) {
+        btnSim.textContent = (typeof simAktif !== 'undefined' && simAktif) ? t("btn_stop_sim") : t("btn_auto_sim");
+    }
+
     // Aktif varyant varsa paneli yeniden çiz (badge + tablo dinamik t() çağrıları)
     if (typeof aktifVariant !== 'undefined' && aktifVariant) {
         varyantPanelGuncelle(aktifVariant);
@@ -660,6 +668,7 @@ function gecmiseHamleEkle(yeniFen, hamleStr) {
 }
 
 function navigasyonYukle(indeks) {
+    if (typeof otonomSimulasyonDurdur === 'function') otonomSimulasyonDurdur();
     gecmisIndeks = indeks;
     aktifFen = fenGecmisi[gecmisIndeks];
     siraKimde = aktifFen.split(" ")[1] || 'w';
@@ -895,6 +904,7 @@ async function yasalHamleleriGetir() {
 }
 
 function kareTiklandi(event) {
+    if (typeof otonomSimulasyonDurdur === 'function') otonomSimulasyonDurdur();
     if (siraKimde !== 'w') return; // Sadece beyaz (kullanıcı) oynayabilir
 
     const kare = event.currentTarget;
@@ -981,6 +991,7 @@ function kareTiklandi(event) {
 }
 
 function varyantUygula(icerik) {
+    if (typeof otonomSimulasyonDurdur === 'function') otonomSimulasyonDurdur();
     aktifIniIcerik = icerik;
     const varyant = iniParse(aktifIniIcerik);
     if (!varyant) return;
@@ -1279,7 +1290,40 @@ function rotaVurgula(bestmove) {
     if (kalkisKare && varisKare) {
         if (siraKimde === 'b') {
             // Siyahın hamlesini uygula
-            const movingTas = karedekiTasiAl(kalkisKare);
+            let movingTas = karedekiTasiAl(kalkisKare);
+            if (bestmove.length === 5 && !isNaN(bestmove[3])) {
+                const promoChar = bestmove[4];
+                if (promoChar) movingTas = promoChar.toLowerCase();
+            }
+
+            // Siyah Rok desteği (King 2 kare yana giderse)
+            if (movingTas === 'k' && Math.abs(koordinatlar.varis.sutun - koordinatlar.kalkis.sutun) === 2) {
+                const row = koordinatlar.kalkis.satir;
+                if (koordinatlar.varis.sutun > koordinatlar.kalkis.sutun) {
+                    const rookFrom = document.getElementById(`kare-${row}-7`);
+                    const rookTo = document.getElementById(`kare-${row}-5`);
+                    if (rookFrom && rookTo) {
+                        const rTas = karedekiTasiAl(rookFrom);
+                        kareyeTasKoy(rookTo, rTas);
+                        rookTo.classList.remove("tas-W", "tas-B");
+                        if (rookFrom.classList.contains("tas-B")) rookTo.classList.add("tas-B");
+                        kareyeTasKoy(rookFrom, "");
+                        rookFrom.classList.remove("tas-W", "tas-B");
+                    }
+                } else {
+                    const rookFrom = document.getElementById(`kare-${row}-0`);
+                    const rookTo = document.getElementById(`kare-${row}-3`);
+                    if (rookFrom && rookTo) {
+                        const rTas = karedekiTasiAl(rookFrom);
+                        kareyeTasKoy(rookTo, rTas);
+                        rookTo.classList.remove("tas-W", "tas-B");
+                        if (rookFrom.classList.contains("tas-B")) rookTo.classList.add("tas-B");
+                        kareyeTasKoy(rookFrom, "");
+                        rookFrom.classList.remove("tas-W", "tas-B");
+                    }
+                }
+            }
+
             kareyeTasKoy(varisKare, movingTas);
             
             varisKare.classList.remove("tas-W", "tas-B");
@@ -1308,9 +1352,231 @@ function rotaVurgula(bestmove) {
 
     // Bestmove alanına rota yönü göster
     const bestmoveEl = document.getElementById("bestmove");
-    const from = bestmove.substring(0, bestmove.length / 2);
-    const to = bestmove.substring(bestmove.length / 2);
-    bestmoveEl.innerHTML = `${bestmove} <span class="rota-ok">[ 🟢 ${from} ➜ 🟡 ${to} ]</span>`;
+    if (bestmoveEl) {
+        const from = bestmove.substring(0, bestmove.length / 2);
+        const to = bestmove.substring(bestmove.length / 2);
+        bestmoveEl.innerHTML = `${bestmove} <span class="rota-ok">[ 🟢 ${from} ➜ 🟡 ${to} ]</span>`;
+    }
+}
+
+// =========================================================================
+// OTONOM SİMÜLASYON (CANLI DEMO) MODU
+// =========================================================================
+let simAktif = false;
+let simTimer = null;
+
+function otonomSimulasyonDurdur() {
+    simAktif = false;
+    if (simTimer) {
+        clearTimeout(simTimer);
+        simTimer = null;
+    }
+    const btn = document.getElementById("btn-oto-sim");
+    if (btn) {
+        btn.textContent = t("btn_auto_sim");
+        btn.style.background = "linear-gradient(135deg, #00c853, #64dd17)";
+        btn.style.color = "#000";
+        btn.style.boxShadow = "0 4px 12px rgba(0,200,83,0.3)";
+    }
+}
+
+async function otonomSimulasyonToggle() {
+    if (simAktif) {
+        otonomSimulasyonDurdur();
+        return;
+    }
+
+    simAktif = true;
+    const btn = document.getElementById("btn-oto-sim");
+    if (btn) {
+        btn.textContent = t("btn_stop_sim");
+        btn.style.background = "linear-gradient(135deg, #d50000, #ff1744)";
+        btn.style.color = "#fff";
+        btn.style.boxShadow = "0 4px 12px rgba(255,23,68,0.4)";
+    }
+
+    otonomSimulasyonDongusu();
+}
+
+async function hamleHesapla() {
+    const payload = {};
+    if (aktifFen) payload.fen = aktifFen;
+    if (aktifVariant && aktifVariant.varyantAdi) payload.varyant_adi = aktifVariant.varyantAdi;
+    if (aktifIniIcerik) payload.variants_ini = aktifIniIcerik;
+    const engineDepthEl = document.getElementById("engine-depth");
+    if (engineDepthEl) payload.derinlik = engineDepthEl.value;
+
+    const endpoints = [
+        `${API_BASE}/api/karar`,
+        "https://wsn-api.onrender.com/api/karar"
+    ];
+
+    for (const url of endpoints) {
+        try {
+            const controller = new AbortController();
+            const tid = setTimeout(() => controller.abort(), 60000);
+            const resp = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
+            clearTimeout(tid);
+            if (resp.ok) {
+                return await resp.json();
+            }
+        } catch (err) {
+            console.warn(`hamleHesapla fetch error for ${url}:`, err);
+        }
+    }
+    return null;
+}
+
+function beyazHamlesiniTahtadaOyna(bestmove) {
+    if (!bestmove || bestmove.length < 4) return false;
+
+    const koordinatlar = hamleToKoordinat(bestmove);
+    if (!koordinatlar) return false;
+
+    const kalkisKare = document.getElementById(`kare-${koordinatlar.kalkis.satir}-${koordinatlar.kalkis.sutun}`);
+    const varisKare = document.getElementById(`kare-${koordinatlar.varis.satir}-${koordinatlar.varis.sutun}`);
+    if (!kalkisKare || !varisKare) return false;
+
+    let movingTas = karedekiTasiAl(kalkisKare);
+    if (bestmove.length === 5 && !isNaN(bestmove[3])) {
+        const promoChar = bestmove[4];
+        if (promoChar) movingTas = promoChar.toUpperCase();
+    }
+
+    // Beyaz Rok desteği (King 2 kare yana giderse)
+    if (movingTas === 'K' && Math.abs(koordinatlar.varis.sutun - koordinatlar.kalkis.sutun) === 2) {
+        const row = koordinatlar.kalkis.satir;
+        if (koordinatlar.varis.sutun > koordinatlar.kalkis.sutun) {
+            const rookFrom = document.getElementById(`kare-${row}-7`);
+            const rookTo = document.getElementById(`kare-${row}-5`);
+            if (rookFrom && rookTo) {
+                const rTas = karedekiTasiAl(rookFrom);
+                kareyeTasKoy(rookTo, rTas);
+                rookTo.classList.remove("tas-W", "tas-B");
+                if (rookFrom.classList.contains("tas-W")) rookTo.classList.add("tas-W");
+                kareyeTasKoy(rookFrom, "");
+                rookFrom.classList.remove("tas-W", "tas-B");
+            }
+        } else {
+            const rookFrom = document.getElementById(`kare-${row}-0`);
+            const rookTo = document.getElementById(`kare-${row}-3`);
+            if (rookFrom && rookTo) {
+                const rTas = karedekiTasiAl(rookFrom);
+                kareyeTasKoy(rookTo, rTas);
+                rookTo.classList.remove("tas-W", "tas-B");
+                if (rookFrom.classList.contains("tas-W")) rookTo.classList.add("tas-W");
+                kareyeTasKoy(rookFrom, "");
+                rookFrom.classList.remove("tas-W", "tas-B");
+            }
+        }
+    }
+
+    kareyeTasKoy(varisKare, movingTas);
+    varisKare.classList.remove("tas-W", "tas-B");
+    if (kalkisKare.classList.contains("tas-W")) varisKare.classList.add("tas-W");
+    if (kalkisKare.classList.contains("tas-B")) varisKare.classList.add("tas-B");
+    
+    kareyeTasKoy(kalkisKare, "");
+    kalkisKare.classList.remove("tas-W", "tas-B", "secili");
+
+    document.querySelectorAll(".rota-kalkis, .rota-varis").forEach(el => {
+        el.classList.remove("rota-kalkis", "rota-varis");
+    });
+    document.querySelectorAll(".rota-ok").forEach(el => el.remove());
+
+    kalkisKare.classList.add("rota-kalkis");
+    varisKare.classList.add("rota-varis");
+
+    siraKimde = 'b';
+    aktifFen = tahtaToFen('b');
+    document.getElementById("fen-metni").textContent = aktifFen;
+
+    gecmiseHamleEkle(aktifFen, bestmove);
+
+    const bestmoveEl = document.getElementById("bestmove");
+    if (bestmoveEl) {
+        const from = bestmove.substring(0, bestmove.length / 2);
+        const to = bestmove.substring(bestmove.length / 2);
+        bestmoveEl.innerHTML = `${bestmove} <span class="rota-ok">[ 🟢 ${from} ➜ 🟡 ${to} ]</span>`;
+    }
+
+    return true;
+}
+
+async function otonomSimulasyonDongusu() {
+    if (!simAktif) return;
+
+    if (siraKimde === 'w') {
+        const bestmoveEl = document.getElementById("bestmove");
+        if (bestmoveEl) bestmoveEl.innerHTML = `<span class="spinner"></span>${t("calculating")}`;
+
+        const data = await hamleHesapla();
+        if (!simAktif) return;
+
+        if (!data || !data.bestmove || data.bestmove === "(none)" || data.bestmove === "0000") {
+            otonomSimulasyonDurdur();
+            return;
+        }
+
+        const cpEl = document.getElementById("cp");
+        if (cpEl) cpEl.textContent = data.cp_skoru !== null ? data.cp_skoru : "0";
+        sonCpSkoru = data.cp_skoru || 0;
+        const fullSolEl = document.getElementById("full-solution");
+        if (fullSolEl && data.full_solution) fullSolEl.textContent = data.full_solution;
+        const motorVaryant = document.getElementById("motor-varyant");
+        if (motorVaryant) motorVaryant.textContent = `${data.varyant || "standart"} (${data.gecikme_ms}ms)`;
+
+        const engineDepthEl = document.getElementById("engine-depth");
+        sonRaporVerisi = {
+            tarih_obj: new Date(),
+            varyant: data.varyant || "standart",
+            fen: data.fen || "startpos",
+            bestmove: data.bestmove,
+            full_solution: data.full_solution,
+            cp_skoru: data.cp_skoru,
+            gecikme_ms: data.gecikme_ms,
+            motor: data.motor,
+            derinlik: engineDepthEl ? parseInt(engineDepthEl.value) : 12,
+            aktif_varyant_obj: aktifVariant,
+            filtre_esik: parseInt(document.getElementById("cp-esik").value),
+            filtre_onay: data.cp_skoru >= parseInt(document.getElementById("cp-esik").value)
+        };
+        const btnRapor = document.getElementById("btn-rapor");
+        if (btnRapor) btnRapor.classList.add("visible");
+        const pdfBtn = document.getElementById("btn-rapor-pdf");
+        if (pdfBtn) {
+            pdfBtn.style.display = "block";
+            pdfBtn.classList.add("visible");
+        }
+
+        const oynandi = beyazHamlesiniTahtadaOyna(data.bestmove);
+        if (!oynandi) {
+            otonomSimulasyonDurdur();
+            return;
+        }
+
+        simTimer = setTimeout(() => {
+            otonomSimulasyonDongusu();
+        }, 900);
+
+    } else if (siraKimde === 'b') {
+        await veriCek('next');
+        if (!simAktif) return;
+
+        if (!sonRaporVerisi || !sonRaporVerisi.bestmove || sonRaporVerisi.bestmove === "(none)" || sonRaporVerisi.bestmove === "0000") {
+            otonomSimulasyonDurdur();
+            return;
+        }
+
+        simTimer = setTimeout(() => {
+            otonomSimulasyonDongusu();
+        }, 900);
+    }
 }
 
 // =========================================================================

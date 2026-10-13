@@ -94,5 +94,7 @@
   "btn_forward": "İleri ▶",
   "btn_pdf": "📄 PDF İndir",
   "moves": "Oynanan Hamleler",
-  "engine_depth": "Arama Derinliği (Depth):"
+  "engine_depth": "Arama Derinliği (Depth):",
+  "btn_auto_sim": "▶ Otonom Simülasyon (Canlı Demo)",
+  "btn_stop_sim": "⏹ Simülasyonu Durdur"
 }

@@ -94,5 +94,7 @@
   "btn_forward": "Forward ▶",
   "btn_pdf": "📄 Download PDF",
   "moves": "Played Moves",
-  "engine_depth": "Search Depth (Depth):"
+  "engine_depth": "Search Depth (Depth):",
+  "btn_auto_sim": "▶ Autonomous Simulation (Live Demo)",
+  "btn_stop_sim": "⏹ Stop Simulation"
 }
